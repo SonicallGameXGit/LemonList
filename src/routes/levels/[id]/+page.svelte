@@ -19,7 +19,8 @@
     const listName = $derived(level.position === null ? 'Future List' : 'Main List')
 
     let copied = $state(false)
-    let selectedRating: number | null = $state(null)
+    // Starts from the stored rating of the viewer, clicking a score overrides it
+    let selectedRating: number | null = $derived(data.viewerRating.rating)
     let ratingNotice = $state(false)
 
     async function copyId() {

@@ -2,7 +2,9 @@ import { SMTP_URL, MAIL_FROM } from '$app/env/private'
 import { dev } from '$app/env'
 import nodemailer from 'nodemailer'
 
-const transport = SMTP_URL === undefined ? null : nodemailer.createTransport(SMTP_URL)
+// Tools that load the config outside of SvelteKit (like the Better Auth CLI) pass an empty string
+const transport =
+    SMTP_URL === undefined || SMTP_URL === '' ? null : nodemailer.createTransport(SMTP_URL)
 
 if (transport === null && dev === false) {
     console.warn('[mail] SMTP_URL is not set, emails will only be printed to the console')

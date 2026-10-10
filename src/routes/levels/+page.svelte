@@ -63,7 +63,12 @@
     </div>
 </div>
 
-{#if levels.length === 0}
+{#if data.levels.length === 0}
+    <div class="gd-dark mt-6 p-12 text-center">
+        <p class="gd-title text-3xl">Nothing here yet</p>
+        <p class="mt-2 text-ink-200">No levels are placed on the list yet.</p>
+    </div>
+{:else if levels.length === 0}
     <div class="gd-dark mt-6 p-12 text-center">
         <p class="gd-title text-3xl">No levels found</p>
         <p class="mt-2 text-ink-200">Try another name or difficulty.</p>

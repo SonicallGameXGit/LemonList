@@ -4,7 +4,8 @@ import {
     getLevel,
     getLevelNeighbours,
     getLevelRecords,
-} from '#lib/server/placeholders.ts'
+    getViewerRating,
+} from '#lib/server/list.ts'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = ({ params, locals }) => {
@@ -24,11 +25,7 @@ export const load: PageServerLoad = ({ params, locals }) => {
         level,
         neighbours: getLevelNeighbours(level),
         records: getLevelRecords(level.id),
-        distribution: getEngagementDistribution(level),
-        // Placeholder: only players who beat the level can rate it
-        viewerRating: {
-            canRate: locals.user !== undefined && level.position !== null,
-            rating: null,
-        },
+        distribution: getEngagementDistribution(level.id),
+        viewerRating: getViewerRating(level, locals.user?.id),
     }
 }

@@ -1,4 +1,4 @@
-import { getLeaderboard } from '#lib/server/placeholders.ts'
+import { getLeaderboard } from '#lib/server/list.ts'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {

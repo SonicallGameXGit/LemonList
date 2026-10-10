@@ -37,92 +37,119 @@
 
 <section class="mt-20">
     <h2 class="text-center gd-title text-4xl">Top of the list</h2>
-    <GdList>
-        {#each data.topLevels as level (level.id)}
-            <LevelRow {level} compact />
-        {/each}
-    </GdList>
-    <div class="text-center">
-        <GdButton href={resolve('/levels')}>Full list</GdButton>
-    </div>
+    {#if data.topLevels.length === 0}
+        <div class="gd-dark mt-5 p-8 text-center text-ink-200">
+            No levels are placed yet. Check the
+            <a href={resolve('/levels/future')} class="gd-link">Future List</a>.
+        </div>
+    {:else}
+        <GdList>
+            {#each data.topLevels as level (level.id)}
+                <LevelRow {level} compact />
+            {/each}
+        </GdList>
+        <div class="text-center">
+            <GdButton href={resolve('/levels')}>Full list</GdButton>
+        </div>
+    {/if}
 </section>
 
 <div class="mt-20 grid gap-14 lg:grid-cols-2">
     <section>
         <h2 class="text-center gd-title text-3xl">Latest completions</h2>
-        <GdList variant="comments">
-            {#each data.recentRecords as record (record.id)}
-                <li>
-                    <div class="gd-comment flex items-center gap-4">
-                        <Avatar
-                            src={record.player.avatarUrl}
-                            name={record.player.displayUsername}
-                            class="size-12"
-                        />
-                        <div class="min-w-0 flex-1">
-                            <a
-                                href={resolve('/players/[username]', {
-                                    username: record.player.username,
-                                })}
-                                class="gd-gold text-xl"
-                            >
-                                {record.player.displayUsername}
-                            </a>
-                            <p class="truncate text-lg">
-                                beat
+        {#if data.recentRecords.length === 0}
+            <div class="gd-dark mt-5 p-8 text-center text-ink-200">
+                Nobody has beaten a level yet.
+            </div>
+        {:else}
+            <GdList variant="comments">
+                {#each data.recentRecords as record (record.id)}
+                    <li>
+                        <div class="gd-comment flex items-center gap-4">
+                            <Avatar
+                                src={record.player.avatarUrl}
+                                name={record.player.displayUsername}
+                                class="size-12"
+                            />
+                            <div class="min-w-0 flex-1">
                                 <a
-                                    href={resolve('/levels/[id]', { id: String(record.level.id) })}
-                                    class="font-bold hover:underline"
+                                    href={resolve('/players/[username]', {
+                                        username: record.player.username,
+                                    })}
+                                    class="gd-gold text-xl"
                                 >
-                                    {record.level.name}
+                                    {record.player.displayUsername}
                                 </a>
-                                <span class="text-gd-yellow">#{record.level.position}</span>
-                            </p>
+                                <p class="truncate text-lg">
+                                    beat
+                                    <a
+                                        href={resolve('/levels/[id]', {
+                                            id: String(record.level.id),
+                                        })}
+                                        class="font-bold hover:underline"
+                                    >
+                                        {record.level.name}
+                                    </a>
+                                    <span class="text-gd-yellow">#{record.level.position}</span>
+                                </p>
+                            </div>
+                            <span class="self-start text-sm text-black/50">
+                                {formatDate(record.submittedAt)}
+                            </span>
                         </div>
-                        <span class="self-start text-sm text-black/50">
-                            {formatDate(record.submittedAt)}
-                        </span>
-                    </div>
-                </li>
-            {/each}
-        </GdList>
+                    </li>
+                {/each}
+            </GdList>
+        {/if}
     </section>
 
     <section>
         <h2 class="text-center gd-title text-3xl">List changes</h2>
-        <GdList variant="comments">
-            {#each data.changes as change (change.id)}
-                <li>
-                    <div class="gd-comment flex items-start gap-4">
-                        <div class="min-w-0 flex-1">
-                            {#if change.level.position === null}
-                                <span class="gd-gold text-xl">{change.level.name}</span>
-                            {:else}
-                                <a
-                                    href={resolve('/levels/[id]', { id: String(change.level.id) })}
-                                    class="gd-gold text-xl"
-                                >
-                                    {change.level.name}
-                                </a>
-                            {/if}
-                            <p class="text-lg">
-                                {#if change.kind === ListChangeKind.Placed}
-                                    was placed at <span class="text-gd-yellow">#{change.to}</span>
-                                {:else if change.kind === ListChangeKind.Removed}
-                                    was removed from <span class="text-gd-red">#{change.from}</span>
-                                {:else if change.kind === ListChangeKind.MovedUp}
-                                    moved up from #{change.from} to
-                                    <span class="text-gd-lime">#{change.to}</span>
+        {#if data.changes.length === 0}
+            <div class="gd-dark mt-5 p-8 text-center text-ink-200">
+                The list hasn't changed yet.
+            </div>
+        {:else}
+            <GdList variant="comments">
+                {#each data.changes as change (change.id)}
+                    <li>
+                        <div class="gd-comment flex items-start gap-4">
+                            <div class="min-w-0 flex-1">
+                                {#if change.level === null}
+                                    <span class="gd-gold text-xl">{change.levelName}</span>
                                 {:else}
-                                    moved down from #{change.from} to
-                                    <span class="text-gd-red">#{change.to}</span>
+                                    <a
+                                        href={resolve('/levels/[id]', {
+                                            id: String(change.level.id),
+                                        })}
+                                        class="gd-gold text-xl"
+                                    >
+                                        {change.level.name}
+                                    </a>
                                 {/if}
-                            </p>
+                                <p class="text-lg">
+                                    {#if change.kind === ListChangeKind.Placed}
+                                        was placed at <span class="text-gd-yellow"
+                                            >#{change.to}</span
+                                        >
+                                    {:else if change.kind === ListChangeKind.Removed}
+                                        was removed from <span class="text-gd-red"
+                                            >#{change.from}</span
+                                        >
+                                    {:else if change.kind === ListChangeKind.MovedUp}
+                                        moved up from #{change.from} to
+                                        <span class="text-gd-lime">#{change.to}</span>
+                                    {:else}
+                                        moved down from #{change.from} to
+                                        <span class="text-gd-red">#{change.to}</span>
+                                    {/if}
+                                </p>
+                            </div>
+                            <span class="text-sm text-black/50">{formatDate(change.date)}</span>
                         </div>
-                        <span class="text-sm text-black/50">{formatDate(change.date)}</span>
-                    </div>
-                </li>
-            {/each}
-        </GdList>
+                    </li>
+                {/each}
+            </GdList>
+        {/if}
     </section>
 </div>

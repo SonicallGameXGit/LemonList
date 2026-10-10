@@ -1,4 +1,4 @@
-import { getMainList } from '#lib/server/placeholders.ts'
+import { getMainList } from '#lib/server/list.ts'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {

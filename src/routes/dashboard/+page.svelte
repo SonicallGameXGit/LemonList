@@ -1,6 +1,6 @@
 <script lang="ts">
     import { resolve } from '$app/paths'
-    import { formatDate, formatPoints, placeholderAvatar } from '#lib/format.ts'
+    import { formatDate, formatPoints } from '#lib/format.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -26,7 +26,7 @@
 
 {#if data.user !== null}
     <header class="flex flex-col items-center gap-6 text-center sm:flex-row sm:text-left">
-        <Avatar src={placeholderAvatar()} name={data.user.displayUsername} class="size-24" />
+        <Avatar src={data.user.avatarUrl} name={data.user.displayUsername} class="size-24" />
         <div class="min-w-0 flex-1">
             <h1 class="gd-title text-5xl break-all">{data.user.displayUsername}</h1>
             <p class="mt-2 text-lg text-ink-200">
@@ -68,7 +68,7 @@
     </header>
 
     <div class="mt-8">
-        {#if data.accountVerified}
+        {#if data.user.accountVerified}
             <Alert kind="success">Your account is verified. Your records count on the list.</Alert>
         {:else}
             <Alert kind="info">

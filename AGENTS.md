@@ -23,16 +23,23 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - Auth: **Better Auth** (`src/lib/server/auth.ts`); never write auth from scratch. Regenerate its schema with `pnpm auth:schema`.
     - Email + password with required email verification, `username` plugin (login by email or username), change email (old address confirms, new address verifies), password reset, account deletion (password + email confirmation).
     - Pages call Better Auth through the client (`src/lib/auth-client.ts`), not `auth.api` in form actions, so requests go through `/api/auth` and get Better Auth's rate limiting and origin checks.
-    - Signed-in user is in `locals.user` (set in `src/hooks.server.ts`) and exposed to pages as `data.user` by the root layout. `/dashboard/*` requires a session; the `(guest)` route group redirects signed-in users away.
+    - Signed-in user is in `locals.user` (set in `src/hooks.server.ts`) and exposed to pages as `data.user` by the root layout (with `avatarUrl` and `accountVerified`). `/dashboard/*` requires a session; the `(guest)` route group redirects signed-in users away.
+    - `admin` plugin: `role`, `banned`, `banReason`, `banExpires` on users (banned users can't sign in and are hidden from the list). Extra user fields (`additionalFields`, `input: false`, so only the server sets them): `avatar` (media key) and `accountVerified` (manual verification). Never use Better Auth's `image` field, clients can set it to any URL.
 - Email: **nodemailer** (`src/lib/server/mail.ts`). If `SMTP_URL` is empty, emails are printed to the server console (development).
-- Database: **SQLite via Drizzle ORM** (`better-sqlite3`), code in `src/lib/server/db`. Schema changes: `pnpm db:push` (dev) or `db:generate` + `db:migrate`.
-- Media (avatars, level previews): **local disk on the VPS** (no S3/R2/CDN; this is a small local community project, don't overcomplicate). Keep uploads outside `build/` and `static/` in a configurable directory, served through a server route, with size/type validation.
+- Database: **SQLite via Drizzle ORM** (`better-sqlite3`), code in `src/lib/server/db`. Schema changes: `pnpm db:push` (dev) or `db:generate` + `db:migrate`. Never pass `--force` to `db:push`: it auto-accepts data-loss statements (it once emptied the `user` table).
+    - Players are the user accounts. List tables in `schema.ts`: `level` (`position` null = Future List), `record` (every submission with its status), `rating` (engagement, one per player and level), `list_change` (Main List history, keeps `level_name` after a level is deleted).
+    - Derived values are computed, not stored: points (`pointsFor(position)`), engagement (average of ratings), record counts, leaderboard and ranks (players with equal points share a rank).
+    - All list queries live in `src/lib/server/list.ts` and return the shapes from `src/lib/list.ts`. They hide banned players and only count `approved` records; a player's best record per level wins.
+    - `pnpm db:seed` fills the DB with sample data (players with the password `lemonlist`, levels with generated previews, records, ratings, history). It refuses if levels exist; `pnpm db:seed --reset` deletes ALL list data and the sample players first.
+- Media (avatars, level previews): **local disk on the VPS** (no S3/R2/CDN; this is a small local community project, don't overcomplicate), in `MEDIA_DIR` (default `media`), served by `src/routes/media/[...key]/+server.ts`.
+    - `src/lib/server/media.ts`: `saveImage(kind, bytes)` validates (size, PNG/JPEG/WebP), re-encodes to WebP with **sharp** (resizes, strips metadata) and returns a random key to store in the DB; `deleteMedia`, `mediaUrl`, `avatarUrl`, `levelThumbnailUrl`. `src/lib/server/media-store.ts` is the same without SvelteKit imports, for scripts.
+    - Fallbacks: no avatar shows `gd/cube-default.png`; a level without a preview shows the YouTube thumbnail of its video, otherwise `gd/preview-default.png` (regenerate with `pnpm exec tsx scripts/default-preview.ts`).
 - Styling: **Tailwind CSS** (stylesheet: `src/routes/layout.css`).
 - General rule: prefer a library over hand-written code, except where a library would be overhead or the task is trivial.
-- Env vars are declared in `src/env.ts` and live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`, `SMTP_URL`, `MAIL_FROM`.
+- Env vars are declared in `src/env.ts` and live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`, `SMTP_URL`, `MAIL_FROM`, `MEDIA_DIR`.
 - UI: a faithful Geometry Dash look (inspired by GDBrowser by GDColon). Textures and sprites in `static/gd` are extracted from the game resources (background, ground, floor line, GJ_button_01-06, GJ_square01, icons, difficulty faces, default cube); Pusab and the list frame come from the GDBrowser archive. Reference them through `sprite()`/`difficultySprite()` in `src/lib/gd.ts`. Design classes live in `src/routes/layout.css` (`gd-title`, `gd-gold`, `gd-box`, `gd-dark`, `gd-light`, `gd-input`, `gd-label`, `gd-press`); use `GdButton` for buttons and `GdList` for framed brown lists. Prefer GD sprites over icon libraries.
-- Data shapes for the list (levels, records, players, difficulties) live in `src/lib/list.ts`. Until the real schema exists, pages get **placeholder data** from `src/lib/server/placeholders.ts` through their `+page.server.ts` loads; replace those functions with DB queries returning the same shapes. Images use placehold.co placeholders (`src/lib/format.ts`).
-- Not yet implemented: the DB schema for the demon list itself, admin roles/tools, manual account verification, upload handling, record submission and rating (their forms are UI-only templates).
+- Data shapes for the list (levels, records, players, difficulties) live in `src/lib/list.ts`; pages get them from `src/lib/server/list.ts` through their `+page.server.ts` loads.
+- Not yet implemented (data and storage exist, only the interactions are missing): admin tools (placing/moving levels, reviewing records, verifying and banning players), avatar and preview uploads, record submission and rating (their forms are UI-only templates).
 
 ## Commands
 
@@ -41,6 +48,7 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - `pnpm check` - svelte-check type checking (must pass with zero errors)
 - `pnpm lint` - prettier check + eslint
 - `pnpm format` - prettier write
+- `pnpm db:seed` - sample data for development (`--reset` replaces all list data)
 
 ## Code Style (mandatory)
 

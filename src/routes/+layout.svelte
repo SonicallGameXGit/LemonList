@@ -4,7 +4,6 @@
     import { asset, resolve } from '$app/paths'
     import { page } from '$app/state'
     import { authClient } from '#lib/auth-client.ts'
-    import { placeholderAvatar } from '#lib/format.ts'
     import { sprite } from '#lib/gd.ts'
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -87,7 +86,7 @@
                 {:else}
                     <a href={resolve('/dashboard')} class="flex gd-press items-center gap-2.5">
                         <Avatar
-                            src={placeholderAvatar()}
+                            src={data.user.avatarUrl}
                             name={data.user.displayUsername}
                             class="size-10"
                         />
@@ -144,7 +143,7 @@
                                 onclick={closeMenu}
                             >
                                 <Avatar
-                                    src={placeholderAvatar()}
+                                    src={data.user.avatarUrl}
                                     name={data.user.displayUsername}
                                     class="size-10"
                                 />

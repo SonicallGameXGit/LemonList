@@ -1,4 +1,4 @@
-import { getFutureList } from '#lib/server/placeholders.ts'
+import { getFutureList } from '#lib/server/list.ts'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {

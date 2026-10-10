@@ -8,7 +8,6 @@
         USERNAME_PATTERN,
         PASSWORD_MIN_LENGTH,
     } from '#lib/auth-rules.ts'
-    import { placeholderAvatar } from '#lib/format.ts'
     import { sprite } from '#lib/gd.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
@@ -181,7 +180,7 @@
         <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={uploadAvatar}>
             <div class="flex items-center gap-5">
                 <Avatar
-                    src={placeholderAvatar()}
+                    src={data.user.avatarUrl}
                     name={data.user.displayUsername}
                     class="size-20"
                 />

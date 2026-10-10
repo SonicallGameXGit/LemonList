@@ -32,7 +32,12 @@
     <input type="search" class="gd-input" placeholder="Search players..." bind:value={query} />
 </label>
 
-{#if entries.length === 0}
+{#if data.leaderboard.length === 0}
+    <div class="gd-dark mt-6 p-12 text-center">
+        <p class="gd-title text-3xl">Nothing here yet</p>
+        <p class="mt-2 text-ink-200">Nobody has joined the list yet.</p>
+    </div>
+{:else if entries.length === 0}
     <div class="gd-dark mt-6 p-12 text-center">
         <p class="gd-title text-3xl">No players found</p>
     </div>

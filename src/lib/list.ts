@@ -84,7 +84,9 @@ export type ListChange = {
     id: number
     date: Date
     kind: ListChangeKind
-    level: LevelRef
+    // Null if the level was deleted since then
+    level: LevelRef | null
+    levelName: string
     from: number | null
     to: number | null
 }

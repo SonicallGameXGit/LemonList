@@ -22,6 +22,11 @@ export const variables = defineEnvVars({
             'SMTP connection URL used to send emails, e.g. `smtps://user:password@smtp.example.com:465`. If empty, emails are printed to the server console instead (development only).',
         schema: optional,
     },
+    MEDIA_DIR: {
+        description:
+            'Directory for uploaded media (avatars, level previews), outside of `build/` and `static/`. Defaults to `media` in the working directory.',
+        schema: (value) => optional(value) ?? 'media',
+    },
     MAIL_FROM: {
         description: 'Sender address for outgoing emails, e.g. `LemonList <noreply@example.com>`.',
         schema: optional,

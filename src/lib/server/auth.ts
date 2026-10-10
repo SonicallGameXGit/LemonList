@@ -3,10 +3,12 @@ import { betterAuth } from 'better-auth/minimal'
 import { APIError, createAuthMiddleware } from 'better-auth/api'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { username } from 'better-auth/plugins/username'
+import { admin } from 'better-auth/plugins/admin'
 import { sveltekitCookies } from 'better-auth/svelte-kit'
 import { getRequestEvent } from '$app/server'
 import { db } from '#lib/server/db/index.ts'
 import { sendLinkMail } from '#lib/server/mail.ts'
+import { deleteMedia } from '#lib/server/media.ts'
 import { USERNAME_MIN_LENGTH, USERNAME_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '#lib/auth-rules.ts'
 
 export const auth = betterAuth({
@@ -47,6 +49,13 @@ export const auth = betterAuth({
         },
     },
     user: {
+        // Set by the server only (uploads, admin tools), never through the client
+        additionalFields: {
+            // Media key of the uploaded avatar, null shows the default cube
+            avatar: { type: 'string', required: false, input: false },
+            // Manual verification by an admin, protects players from impersonation
+            accountVerified: { type: 'boolean', required: true, defaultValue: false, input: false },
+        },
         changeEmail: {
             enabled: true,
             // The current (verified) address must approve the change first, then the new one gets a verification link
@@ -67,6 +76,11 @@ export const auth = betterAuth({
                     'Someone requested to permanently delete your LemonList account. Open this link (while signed in) to confirm:',
                     url,
                 ),
+            afterDelete: async (user) => {
+                if ('avatar' in user && typeof user.avatar === 'string') {
+                    await deleteMedia(user.avatar)
+                }
+            },
         },
     },
     hooks: {
@@ -90,6 +104,8 @@ export const auth = betterAuth({
             minUsernameLength: USERNAME_MIN_LENGTH,
             maxUsernameLength: USERNAME_MAX_LENGTH,
         }),
+        // Roles and bans (banned users can't sign in and are hidden from the list)
+        admin(),
         sveltekitCookies(getRequestEvent), // make sure this is the last plugin in the array
     ],
 })
