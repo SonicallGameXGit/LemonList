@@ -1,1 +1,206 @@
 @import 'tailwindcss';
+
+/* Geometry Dash look. Textures and sprites in static/gd are taken from the game resources */
+@font-face {
+    font-family: 'Pusab';
+    src: url('/gd/Pusab.ttf') format('truetype');
+    font-display: swap;
+}
+
+@theme {
+    --font-sans: Aller, Helvetica, Arial, sans-serif;
+    --font-gd: 'Pusab', Arial, sans-serif;
+
+    --color-ink-950: #0b0b0d;
+    --color-ink-900: #111114;
+    --color-ink-300: #9a968f;
+    --color-ink-200: #c9c4bb;
+
+    /* Colors from the game menus */
+    --color-gd-box: #995533;
+    --color-gd-list: #ad734c;
+    --color-gd-row: #a1582c;
+    --color-gd-row-alt: #c1743f;
+    --color-gd-comment: #b96c39;
+    --color-gd-light: #be6f3f;
+    --color-gd-light-border: #803e1e;
+    --color-gd-yellow: #ffde00;
+    --color-gd-lime: #4cda5b;
+    --color-gd-blue: #27cefa;
+    --color-gd-red: #ff5a5a;
+    --color-gd-bar: #00ff00;
+
+    /* Tint of the game background and ground, the textures are grayscale like in the game */
+    --color-gd-bg-tint: #3a3a48;
+    --color-gd-ground-tint: #24242e;
+}
+
+/* White text with a black outline ("bigFont") */
+@utility gd-title {
+    font-family: var(--font-gd);
+    font-weight: normal;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: white;
+    -webkit-text-stroke: 0.045em black;
+    paint-order: stroke fill;
+    text-shadow: 0.06em 0.06em 0 rgb(0 0 0 / 0.3);
+}
+
+/* Gold gradient text ("goldFont") */
+@utility gd-gold {
+    font-family: var(--font-gd);
+    font-weight: normal;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    background: linear-gradient(#fda00c, #ffe348);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 0.035em black;
+    filter: drop-shadow(0.04em 0.04em 0 rgb(0 0 0 / 0.25));
+    text-shadow: none;
+}
+
+/* Bouncy press, like every button in the game */
+@utility gd-press {
+    cursor: pointer;
+    user-select: none;
+
+    &:active,
+    &:focus-visible {
+        animation: gd-bounce 0.25s ease-in-out forwards;
+    }
+}
+
+/* The glowing line on top of the ground */
+@utility floor-line {
+    height: 3px;
+    background: url('/gd/floor-line.png') center / 100% 100% no-repeat;
+}
+
+@keyframes gd-bounce {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.12);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+@layer base {
+    html {
+        color-scheme: dark;
+    }
+
+    body {
+        @apply min-h-dvh font-sans text-lg text-white antialiased;
+        background: url('/gd/background.png') top left / auto 100vh repeat-x fixed
+            var(--color-gd-bg-tint);
+        background-blend-mode: multiply;
+    }
+
+    img {
+        user-select: none;
+    }
+}
+
+@layer components {
+    /* Game button, the text goes into <GdButton> or a span with gd-gold / gd-title */
+    .gd-btn {
+        @apply relative isolate inline-flex shrink-0 gd-press items-center justify-center gap-2 text-3xl leading-none whitespace-nowrap;
+        padding: 0.42em 0.75em 0.36em;
+        font-family: var(--font-gd);
+
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border-style: solid;
+            border-width: 0.5em;
+            border-image-source: var(--gd-button, url('/gd/button-01.png'));
+            border-image-slice: 48 fill;
+            border-image-width: 0.5em;
+        }
+
+        &:disabled,
+        &[aria-disabled='true'] {
+            @apply pointer-events-none opacity-60;
+        }
+    }
+
+    .gd-btn-sm {
+        @apply text-2xl;
+    }
+
+    .gd-btn-cyan {
+        --gd-button: url('/gd/button-02.png');
+    }
+
+    .gd-btn-pink {
+        --gd-button: url('/gd/button-03.png');
+    }
+
+    .gd-btn-gray {
+        --gd-button: url('/gd/button-04.png');
+    }
+
+    .gd-btn-slate {
+        --gd-button: url('/gd/button-05.png');
+    }
+
+    .gd-btn-red {
+        --gd-button: url('/gd/button-06.png');
+    }
+
+    /* Brown popup box (GJ_square01) */
+    .gd-box {
+        @apply rounded-3xl bg-gd-box;
+        border: 20px solid;
+        border-image: url('/gd/square-brown.png') 80 / 20px stretch;
+    }
+
+    /* Transparent dark box used for inputs and info panels */
+    .gd-dark {
+        @apply rounded-2xl bg-black/30;
+    }
+
+    .gd-light {
+        @apply rounded-2xl border-2 border-gd-light-border bg-gd-light;
+    }
+
+    /* Brown list with alternating rows; wrap it with <GdList> to get the frame */
+    .gd-list > li {
+        @apply border-b-2 border-black/40 bg-gd-row last:border-b-0 odd:bg-gd-row-alt;
+    }
+
+    /* Comment list from the level screen */
+    .gd-comments > li {
+        @apply border-b-2 border-black/40 bg-gd-row p-2 last:border-b-0 odd:bg-gd-comment;
+    }
+
+    .gd-comment {
+        @apply rounded-xl bg-[rgb(147_79_39/0.8)] px-4 py-3;
+    }
+
+    .gd-input {
+        @apply w-full rounded-xl bg-black/30 px-4 py-2.5 font-gd text-xl text-white outline-none [-webkit-text-stroke:0.04em_black] [paint-order:stroke_fill] placeholder:text-white/45 placeholder:[-webkit-text-stroke:0] focus:bg-black/40 disabled:opacity-60;
+    }
+
+    textarea.gd-input {
+        @apply font-sans text-lg [-webkit-text-stroke:0];
+    }
+
+    .gd-label {
+        @apply flex flex-col gap-2 gd-title text-lg;
+    }
+
+    .gd-link {
+        @apply text-gd-blue hover:underline;
+    }
+}

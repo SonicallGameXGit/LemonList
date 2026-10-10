@@ -3,6 +3,9 @@
     import { page } from '$app/state'
     import { authClient, errorMessage } from '#lib/auth-client.ts'
     import type { PageProps } from './$types'
+    import Alert from '#lib/components/Alert.svelte'
+    import AuthCard from '#lib/components/AuthCard.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
 
     let { data }: PageProps = $props()
 
@@ -34,31 +37,46 @@
     <title>Verify email - LemonList</title>
 </svelte:head>
 
-<h1>Verify email</h1>
+<AuthCard title="Verify email">
+    {#if linkError === null && data.user !== null && data.user.emailVerified === true}
+        <Alert kind="success">
+            Your email <strong>{data.user.email}</strong> is verified.
+        </Alert>
+        <GdButton href={resolve('/dashboard')} class="self-center">Go to your dashboard</GdButton>
+    {:else}
+        {#if linkError !== null}
+            <Alert kind="error">
+                This verification link is invalid or has expired ({linkError}).
+            </Alert>
+        {/if}
 
-{#if linkError === null && data.user !== null && data.user.emailVerified === true}
-    <p role="status">Your email <strong>{data.user.email}</strong> is verified.</p>
-    <p><a href={resolve('/dashboard')}>Go to your dashboard</a></p>
-{:else}
-    {#if linkError !== null}
-        <p role="alert">This verification link is invalid or has expired ({linkError}).</p>
+        <p class="text-center text-white">Need a new verification link? Enter your email below.</p>
+
+        <form class="flex flex-col gap-4" {onsubmit}>
+            <label class="gd-label">
+                Email
+                <input
+                    type="email"
+                    class="gd-input"
+                    name="email"
+                    autocomplete="email"
+                    required
+                    bind:value={email}
+                />
+            </label>
+
+            {#if error !== null}
+                <Alert kind="error">{error}</Alert>
+            {/if}
+            {#if sent}
+                <Alert kind="success">
+                    If this email needs verification, a new link has been sent.
+                </Alert>
+            {/if}
+
+            <GdButton type="submit" disabled={pending} class="mt-2 self-center"
+                >Send verification link</GdButton
+            >
+        </form>
     {/if}
-
-    <p>Need a new verification link? Enter your email below.</p>
-
-    <form {onsubmit}>
-        <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required bind:value={email} />
-        </label>
-
-        {#if error !== null}
-            <p role="alert">{error}</p>
-        {/if}
-        {#if sent}
-            <p role="status">If this email needs verification, a new link has been sent.</p>
-        {/if}
-
-        <button type="submit" disabled={pending}>Send verification link</button>
-    </form>
-{/if}
+</AuthCard>

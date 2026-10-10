@@ -30,7 +30,9 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - Styling: **Tailwind CSS** (stylesheet: `src/routes/layout.css`).
 - General rule: prefer a library over hand-written code, except where a library would be overhead or the task is trivial.
 - Env vars are declared in `src/env.ts` and live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`, `SMTP_URL`, `MAIL_FROM`.
-- Not yet implemented: the DB schema for the demon list itself, admin roles/tools, manual account verification, upload handling, UI design.
+- UI: a faithful Geometry Dash look (inspired by GDBrowser by GDColon). Textures and sprites in `static/gd` are extracted from the game resources (background, ground, floor line, GJ_button_01-06, GJ_square01, icons, difficulty faces, default cube); Pusab and the list frame come from the GDBrowser archive. Reference them through `sprite()`/`difficultySprite()` in `src/lib/gd.ts`. Design classes live in `src/routes/layout.css` (`gd-title`, `gd-gold`, `gd-box`, `gd-dark`, `gd-light`, `gd-input`, `gd-label`, `gd-press`); use `GdButton` for buttons and `GdList` for framed brown lists. Prefer GD sprites over icon libraries.
+- Data shapes for the list (levels, records, players, difficulties) live in `src/lib/list.ts`. Until the real schema exists, pages get **placeholder data** from `src/lib/server/placeholders.ts` through their `+page.server.ts` loads; replace those functions with DB queries returning the same shapes. Images use placehold.co placeholders (`src/lib/format.ts`).
+- Not yet implemented: the DB schema for the demon list itself, admin roles/tools, manual account verification, upload handling, record submission and rating (their forms are UI-only templates).
 
 ## Commands
 

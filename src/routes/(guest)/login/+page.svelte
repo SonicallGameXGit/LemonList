@@ -3,6 +3,9 @@
     import { resolve } from '$app/paths'
     import { page } from '$app/state'
     import { authClient, errorMessage, safeRedirect } from '#lib/auth-client.ts'
+    import Alert from '#lib/components/Alert.svelte'
+    import AuthCard from '#lib/components/AuthCard.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
 
     let login = $state('')
     let password = $state('')
@@ -43,33 +46,47 @@
     <title>Log in - LemonList</title>
 </svelte:head>
 
-<h1>Log in</h1>
+<AuthCard title="Welcome back!" subtitle="Log in to submit records and rate levels.">
+    <form class="flex flex-col gap-4" {onsubmit}>
+        <label class="gd-label">
+            Email or username
+            <input
+                type="text"
+                class="gd-input"
+                name="login"
+                autocomplete="username"
+                required
+                bind:value={login}
+            />
+        </label>
+        <label class="gd-label">
+            <span class="flex items-center justify-between">
+                Password
+                <a href={resolve('/(guest)/forgot-password')} class="gd-link text-base">
+                    Forgot your password?
+                </a>
+            </span>
+            <input
+                type="password"
+                class="gd-input"
+                name="password"
+                autocomplete="current-password"
+                required
+                bind:value={password}
+            />
+        </label>
 
-<form {onsubmit}>
-    <label>
-        Email or username
-        <input type="text" name="login" autocomplete="username" required bind:value={login} />
-    </label>
-    <label>
-        Password
-        <input
-            type="password"
-            name="password"
-            autocomplete="current-password"
-            required
-            bind:value={password}
-        />
-    </label>
+        {#if error !== null}
+            <Alert kind="error">{error}</Alert>
+        {/if}
+        {#if notice !== null}
+            <Alert kind="info">{notice}</Alert>
+        {/if}
 
-    {#if error !== null}
-        <p role="alert">{error}</p>
-    {/if}
-    {#if notice !== null}
-        <p role="status">{notice}</p>
-    {/if}
+        <GdButton type="submit" disabled={pending} class="mt-2 self-center">Log in</GdButton>
+    </form>
 
-    <button type="submit" disabled={pending}>Log in</button>
-</form>
-
-<p><a href={resolve('forgot-password')}>Forgot your password?</a></p>
-<p>No account yet? <a href={resolve('register')}>Register</a></p>
+    {#snippet footer()}
+        <p>No account yet? <a href={resolve('/(guest)/register')} class="gd-link">Register</a></p>
+    {/snippet}
+</AuthCard>

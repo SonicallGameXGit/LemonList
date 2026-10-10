@@ -8,6 +8,12 @@
         USERNAME_PATTERN,
         PASSWORD_MIN_LENGTH,
     } from '#lib/auth-rules.ts'
+    import { placeholderAvatar } from '#lib/format.ts'
+    import { sprite } from '#lib/gd.ts'
+    import Alert from '#lib/components/Alert.svelte'
+    import Avatar from '#lib/components/Avatar.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
+    import type { Snippet } from 'svelte'
     import type { PageProps } from './$types'
 
     let { data }: PageProps = $props()
@@ -107,7 +113,7 @@
         const done = await run(sessionsForm, () => authClient.revokeSessions(), 'Signed out.')
 
         if (done) {
-            await goto(resolve('login'), { refreshAll: true })
+            await goto(resolve('/(guest)/login'), { refreshAll: true })
         }
     }
 
@@ -131,24 +137,82 @@
             deletePassword = ''
         }
     }
+
+    // Placeholder until avatar uploads are implemented
+    let avatarNotice = $state(false)
+
+    function uploadAvatar(event: SubmitEvent) {
+        event.preventDefault()
+        avatarNotice = true
+    }
 </script>
 
 <svelte:head>
     <title>Settings - LemonList</title>
 </svelte:head>
 
-<h1>Account settings</h1>
+<a
+    href={resolve('/dashboard')}
+    class="mb-6 inline-block gd-press"
+    aria-label="Back to the dashboard"
+>
+    <img src={sprite('back')} alt="" class="h-16 w-auto" />
+</a>
+
+<h1 class="mb-12 gd-gold text-center text-5xl sm:text-6xl">Settings</h1>
 
 {#if data.user !== null}
-    <section>
-        <h2>Username</h2>
-        <p>Current username: <strong>{data.user.displayUsername}</strong></p>
+    <div class="flex flex-col gap-14">
+        {@render group('Profile', profile)}
+        {@render group('Sign-in', signIn)}
+        {@render group('Danger zone', danger)}
+    </div>
+{/if}
 
-        <form onsubmit={changeUsername}>
-            <label>
-                New username
+{#snippet group(title: string, content: Snippet)}
+    <section class="grid gap-5 md:grid-cols-[14rem_1fr]">
+        <h2 class="gd-title text-3xl">{title}</h2>
+        <div class="flex flex-col gap-5">{@render content()}</div>
+    </section>
+{/snippet}
+
+{#snippet profile()}
+    {#if data.user !== null}
+        <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={uploadAvatar}>
+            <div class="flex items-center gap-5">
+                <Avatar
+                    src={placeholderAvatar()}
+                    name={data.user.displayUsername}
+                    class="size-20"
+                />
+                <label class="gd-label flex-1">
+                    Avatar
+                    <input
+                        type="file"
+                        name="avatar"
+                        accept="image/png, image/jpeg, image/webp"
+                        required
+                        class="gd-input p-2 font-sans text-base [-webkit-text-stroke:0] file:mr-3 file:cursor-pointer file:rounded-lg file:border-2 file:border-black file:bg-gd-light file:px-3 file:py-1 file:font-gd file:text-white"
+                    />
+                    <span class="font-sans text-base text-ink-200 [-webkit-text-stroke:0]">
+                        PNG, JPEG or WebP, up to 2 MB.
+                    </span>
+                </label>
+            </div>
+
+            {#if avatarNotice}
+                <Alert kind="info">Avatar uploads are coming soon.</Alert>
+            {/if}
+
+            <GdButton type="submit" color="cyan" size="sm" class="self-start">Upload</GdButton>
+        </form>
+
+        <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={changeUsername}>
+            <label class="gd-label">
+                Username
                 <input
                     type="text"
+                    class="gd-input"
                     name="username"
                     autocomplete="username"
                     required
@@ -156,123 +220,144 @@
                     maxlength={USERNAME_MAX_LENGTH}
                     pattern={USERNAME_PATTERN}
                     title="Letters, numbers, underscores and dots"
+                    placeholder={data.user.displayUsername}
                     bind:value={username}
                 />
             </label>
 
             {@render status(usernameForm)}
 
-            <button type="submit" disabled={usernameForm.pending}>Change username</button>
+            <GdButton type="submit" size="sm" class="self-start" disabled={usernameForm.pending}>
+                Change username
+            </GdButton>
         </form>
-    </section>
+    {/if}
+{/snippet}
 
-    <section>
-        <h2>Email</h2>
-        <p>Current email: <strong>{data.user.email}</strong></p>
-
-        <form onsubmit={changeEmail}>
-            <label>
-                New email
+{#snippet signIn()}
+    {#if data.user !== null}
+        <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={changeEmail}>
+            <label class="gd-label">
+                Email
                 <input
                     type="email"
+                    class="gd-input"
                     name="email"
                     autocomplete="email"
                     required
+                    placeholder={data.user.email}
                     bind:value={newEmail}
                 />
             </label>
 
             {@render status(emailForm)}
 
-            <button type="submit" disabled={emailForm.pending}>Change email</button>
+            <GdButton type="submit" size="sm" class="self-start" disabled={emailForm.pending}>
+                Change email
+            </GdButton>
         </form>
-    </section>
 
-    <section>
-        <h2>Password</h2>
-
-        <form onsubmit={changePassword}>
-            <label>
+        <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={changePassword}>
+            <label class="gd-label">
                 Current password
                 <input
                     type="password"
+                    class="gd-input"
                     name="current-password"
                     autocomplete="current-password"
                     required
                     bind:value={currentPassword}
                 />
             </label>
-            <label>
-                New password
-                <input
-                    type="password"
-                    name="new-password"
-                    autocomplete="new-password"
-                    required
-                    minlength={PASSWORD_MIN_LENGTH}
-                    bind:value={newPassword}
-                />
-            </label>
-            <label>
-                Repeat new password
-                <input
-                    type="password"
-                    name="new-password-repeat"
-                    autocomplete="new-password"
-                    required
-                    minlength={PASSWORD_MIN_LENGTH}
-                    bind:value={newPasswordRepeat}
-                />
-            </label>
+            <div class="grid gap-5 sm:grid-cols-2">
+                <label class="gd-label">
+                    New password
+                    <input
+                        type="password"
+                        class="gd-input"
+                        name="new-password"
+                        autocomplete="new-password"
+                        required
+                        minlength={PASSWORD_MIN_LENGTH}
+                        bind:value={newPassword}
+                    />
+                </label>
+                <label class="gd-label">
+                    Repeat new password
+                    <input
+                        type="password"
+                        class="gd-input"
+                        name="new-password-repeat"
+                        autocomplete="new-password"
+                        required
+                        minlength={PASSWORD_MIN_LENGTH}
+                        bind:value={newPasswordRepeat}
+                    />
+                </label>
+            </div>
 
             {@render status(passwordForm)}
 
-            <button type="submit" disabled={passwordForm.pending}>Change password</button>
+            <GdButton type="submit" size="sm" class="self-start" disabled={passwordForm.pending}>
+                Change password
+            </GdButton>
         </form>
-    </section>
 
-    <section>
-        <h2>Sessions</h2>
-        <p>Sign out on every device, including this one.</p>
+        <div class="gd-dark flex flex-col gap-4 p-6">
+            <p>Sign out on every device, including this one.</p>
 
-        {@render status(sessionsForm)}
+            {@render status(sessionsForm)}
 
-        <button type="button" disabled={sessionsForm.pending} onclick={signOutEverywhere}>
-            Sign out everywhere
-        </button>
-    </section>
+            <GdButton
+                color="gray"
+                size="sm"
+                class="self-start"
+                disabled={sessionsForm.pending}
+                onclick={signOutEverywhere}
+            >
+                Sign out everywhere
+            </GdButton>
+        </div>
+    {/if}
+{/snippet}
 
-    <section>
-        <h2>Delete account</h2>
+{#snippet danger()}
+    <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={deleteAccount}>
         <p>
-            This permanently deletes your account. Enter your password, then confirm with the link
-            sent to your email.
+            Permanently deletes your account. Enter your password, then confirm with the link sent
+            to your email.
         </p>
+        <label class="gd-label">
+            Password
+            <input
+                type="password"
+                class="gd-input"
+                name="delete-password"
+                autocomplete="current-password"
+                required
+                bind:value={deletePassword}
+            />
+        </label>
 
-        <form onsubmit={deleteAccount}>
-            <label>
-                Password
-                <input
-                    type="password"
-                    name="delete-password"
-                    autocomplete="current-password"
-                    required
-                    bind:value={deletePassword}
-                />
-            </label>
+        {@render status(deleteForm)}
 
-            {@render status(deleteForm)}
-
-            <button type="submit" disabled={deleteForm.pending}>Delete my account</button>
-        </form>
-    </section>
-{/if}
+        <GdButton
+            type="submit"
+            color="red"
+            size="sm"
+            class="self-start"
+            disabled={deleteForm.pending}
+        >
+            Delete my account
+        </GdButton>
+    </form>
+{/snippet}
 
 {#snippet status(form: FormState)}
     {#if form.error !== null}
-        <p role="alert">{form.error}</p>
+        <Alert kind="error">{form.error}</Alert>
     {/if}
     {#if form.success !== null}
-        <p role="status">{form.success}</p>
+        <Alert kind="success">{form.success}</Alert>
     {/if}
 {/snippet}

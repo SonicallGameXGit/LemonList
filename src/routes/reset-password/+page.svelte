@@ -3,6 +3,9 @@
     import { page } from '$app/state'
     import { authClient, errorMessage } from '#lib/auth-client.ts'
     import { PASSWORD_MIN_LENGTH } from '#lib/auth-rules.ts'
+    import Alert from '#lib/components/Alert.svelte'
+    import AuthCard from '#lib/components/AuthCard.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
 
     // Better Auth redirects here with either ?token=... or ?error=INVALID_TOKEN
     const token = $derived(page.url.searchParams.get('token'))
@@ -40,43 +43,51 @@
     <title>Reset password - LemonList</title>
 </svelte:head>
 
-<h1>Reset password</h1>
+<AuthCard title="New password">
+    {#if done}
+        <Alert kind="success">
+            Your password has been changed. All of your sessions have been signed out.
+        </Alert>
+        <GdButton href={resolve('/(guest)/login')} class="self-center">Log in</GdButton>
+    {:else if token === null}
+        <Alert kind="error">This reset link is invalid or has expired.</Alert>
+        <a href={resolve('/(guest)/forgot-password')} class="gd-btn gd-btn-gray"
+            >Request a new one</a
+        >
+    {:else}
+        <form class="flex flex-col gap-4" {onsubmit}>
+            <label class="gd-label">
+                New password
+                <input
+                    type="password"
+                    class="gd-input"
+                    name="password"
+                    autocomplete="new-password"
+                    required
+                    minlength={PASSWORD_MIN_LENGTH}
+                    bind:value={password}
+                />
+            </label>
+            <label class="gd-label">
+                Repeat new password
+                <input
+                    type="password"
+                    class="gd-input"
+                    name="password-repeat"
+                    autocomplete="new-password"
+                    required
+                    minlength={PASSWORD_MIN_LENGTH}
+                    bind:value={passwordRepeat}
+                />
+            </label>
 
-{#if done}
-    <p role="status">Your password has been changed. All of your sessions have been signed out.</p>
-    <p><a href={resolve('login')}>Log in</a></p>
-{:else if token === null}
-    <p role="alert">This reset link is invalid or has expired.</p>
-    <p><a href={resolve('forgot-password')}>Request a new one</a></p>
-{:else}
-    <form {onsubmit}>
-        <label>
-            New password
-            <input
-                type="password"
-                name="password"
-                autocomplete="new-password"
-                required
-                minlength={PASSWORD_MIN_LENGTH}
-                bind:value={password}
-            />
-        </label>
-        <label>
-            Repeat new password
-            <input
-                type="password"
-                name="password-repeat"
-                autocomplete="new-password"
-                required
-                minlength={PASSWORD_MIN_LENGTH}
-                bind:value={passwordRepeat}
-            />
-        </label>
+            {#if error !== null}
+                <Alert kind="error">{error}</Alert>
+            {/if}
 
-        {#if error !== null}
-            <p role="alert">{error}</p>
-        {/if}
-
-        <button type="submit" disabled={pending}>Change password</button>
-    </form>
-{/if}
+            <GdButton type="submit" disabled={pending} class="mt-2 self-center"
+                >Change password</GdButton
+            >
+        </form>
+    {/if}
+</AuthCard>

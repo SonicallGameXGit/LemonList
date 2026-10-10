@@ -1,6 +1,9 @@
 <script lang="ts">
     import { resolve } from '$app/paths'
     import { authClient, errorMessage } from '#lib/auth-client.ts'
+    import Alert from '#lib/components/Alert.svelte'
+    import AuthCard from '#lib/components/AuthCard.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
 
     let email = $state('')
     let pending = $state(false)
@@ -27,25 +30,36 @@
     <title>Forgot password - LemonList</title>
 </svelte:head>
 
-<h1>Forgot password</h1>
+<AuthCard title="Forgot password?" subtitle="We'll send you a link to set a new one.">
+    {#if sent}
+        <Alert kind="success">
+            If an account with this email exists, we've sent it a link to reset the password.
+        </Alert>
+    {:else}
+        <form class="flex flex-col gap-4" {onsubmit}>
+            <label class="gd-label">
+                Email
+                <input
+                    type="email"
+                    class="gd-input"
+                    name="email"
+                    autocomplete="email"
+                    required
+                    bind:value={email}
+                />
+            </label>
 
-{#if sent}
-    <p role="status">
-        If an account with this email exists, we've sent it a link to reset the password.
-    </p>
-{:else}
-    <form {onsubmit}>
-        <label>
-            Email
-            <input type="email" name="email" autocomplete="email" required bind:value={email} />
-        </label>
+            {#if error !== null}
+                <Alert kind="error">{error}</Alert>
+            {/if}
 
-        {#if error !== null}
-            <p role="alert">{error}</p>
-        {/if}
+            <GdButton type="submit" disabled={pending} class="mt-2 self-center"
+                >Send reset link</GdButton
+            >
+        </form>
+    {/if}
 
-        <button type="submit" disabled={pending}>Send reset link</button>
-    </form>
-{/if}
-
-<p><a href={resolve('login')}>Back to log in</a></p>
+    {#snippet footer()}
+        <a href={resolve('/(guest)/login')} class="gd-link">Back to log in</a>
+    {/snippet}
+</AuthCard>

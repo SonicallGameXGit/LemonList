@@ -1,42 +1,188 @@
 <script lang="ts">
     import './layout.css'
-    import favicon from '#lib/assets/favicon.svg'
     import { goto } from '$app/navigation'
-    import { resolve } from '$app/paths'
+    import { asset, resolve } from '$app/paths'
+    import { page } from '$app/state'
     import { authClient } from '#lib/auth-client.ts'
+    import { placeholderAvatar } from '#lib/format.ts'
+    import { sprite } from '#lib/gd.ts'
+    import Avatar from '#lib/components/Avatar.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
     import type { LayoutProps } from './$types'
 
     let { data, children }: LayoutProps = $props()
 
+    let menuOpen = $state(false)
+
+    const links = [
+        { href: resolve('/levels'), label: 'Main List' },
+        { href: resolve('/levels/future'), label: 'Future List' },
+        { href: resolve('/players'), label: 'Players' },
+    ]
+
+    function isActive(href: string) {
+        const path = page.url.pathname
+
+        if (href === resolve('/levels')) {
+            return (
+                path === href || (path.startsWith(href + '/') && !path.startsWith(href + '/future'))
+            )
+        }
+
+        return path === href || path.startsWith(href + '/')
+    }
+
+    function closeMenu() {
+        menuOpen = false
+    }
+
     async function signOut() {
+        menuOpen = false
         await authClient.signOut()
         await goto(resolve('/'), { refreshAll: true })
     }
 </script>
 
 <svelte:head>
-    <link rel="icon" href={favicon} />
+    <link rel="icon" href={asset('gd/cube-lemon.png')} />
+    <link
+        rel="preload"
+        href={asset('gd/Pusab.ttf')}
+        as="font"
+        type="font/ttf"
+        crossorigin="anonymous"
+    />
     <title>LemonList</title>
 </svelte:head>
 
-<header>
-    <nav>
-        <a href={resolve('/')}>LemonList</a>
-        <a href={resolve('/levels')}>Main List</a>
-        <a href={resolve('/levels/future')}>Future List</a>
-        <a href={resolve('/players')}>Players</a>
+<div class="relative flex min-h-dvh flex-col overflow-x-clip">
+    <header class="relative z-30">
+        <nav class="mx-auto flex h-24 max-w-6xl items-center gap-8 px-4">
+            <a href={resolve('/')} class="flex shrink-0 gd-press items-center gap-3">
+                <img src={sprite('cube-lemon')} alt="" class="size-11" />
+                <span class="gd-gold text-3xl">LemonList</span>
+            </a>
 
-        {#if data.user === null}
-            <a href={resolve('login')}>Log in</a>
-            <a href={resolve('register')}>Register</a>
-        {:else}
-            <a href={resolve('/dashboard')}>{data.user.displayUsername}</a>
-            <a href={resolve('/dashboard/settings')}>Settings</a>
-            <button type="button" onclick={signOut}>Sign out</button>
+            <div class="hidden items-center gap-7 lg:flex">
+                {#each links as link (link.href)}
+                    <a
+                        href={link.href}
+                        class={[
+                            'gd-title text-xl transition-[filter]',
+                            isActive(link.href) ? 'text-gd-yellow' : 'hover:brightness-90',
+                        ]}
+                        aria-current={isActive(link.href) ? 'page' : undefined}
+                    >
+                        {link.label}
+                    </a>
+                {/each}
+            </div>
+
+            <div class="ml-auto hidden items-center gap-4 lg:flex">
+                {#if data.user === null}
+                    <GdButton href={resolve('/(guest)/login')} color="cyan" size="sm">
+                        Log in
+                    </GdButton>
+                    <GdButton href={resolve('/(guest)/register')} size="sm">Register</GdButton>
+                {:else}
+                    <a href={resolve('/dashboard')} class="flex gd-press items-center gap-2.5">
+                        <Avatar
+                            src={placeholderAvatar()}
+                            name={data.user.displayUsername}
+                            class="size-10"
+                        />
+                        <span class="gd-title text-xl">{data.user.displayUsername}</span>
+                    </a>
+                    <GdButton color="red" size="sm" onclick={signOut}>Sign out</GdButton>
+                {/if}
+            </div>
+
+            <button
+                type="button"
+                class="ml-auto gd-press lg:hidden"
+                aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={menuOpen}
+                onclick={() => (menuOpen = !menuOpen)}
+            >
+                <img src={sprite(menuOpen ? 'close' : 'menu')} alt="" class="size-14" />
+            </button>
+        </nav>
+
+        {#if menuOpen}
+            <div class="gd-box mx-4 mb-4 lg:hidden">
+                <div class="flex flex-col gap-4 px-2 py-2">
+                    {#each links as link (link.href)}
+                        <a
+                            href={link.href}
+                            class={['gd-title text-2xl', isActive(link.href) && 'text-gd-yellow']}
+                            onclick={closeMenu}
+                        >
+                            {link.label}
+                        </a>
+                    {/each}
+                    <div class="mt-2 flex flex-wrap items-center gap-3">
+                        {#if data.user === null}
+                            <GdButton
+                                href={resolve('/(guest)/login')}
+                                color="cyan"
+                                size="sm"
+                                onclick={closeMenu}
+                            >
+                                Log in
+                            </GdButton>
+                            <GdButton
+                                href={resolve('/(guest)/register')}
+                                size="sm"
+                                onclick={closeMenu}
+                            >
+                                Register
+                            </GdButton>
+                        {:else}
+                            <a
+                                href={resolve('/dashboard')}
+                                class="flex items-center gap-2.5"
+                                onclick={closeMenu}
+                            >
+                                <Avatar
+                                    src={placeholderAvatar()}
+                                    name={data.user.displayUsername}
+                                    class="size-10"
+                                />
+                                <span class="gd-title text-xl">{data.user.displayUsername}</span>
+                            </a>
+                            <GdButton color="red" size="sm" onclick={signOut}>Sign out</GdButton>
+                        {/if}
+                    </div>
+                </div>
+            </div>
         {/if}
-    </nav>
-</header>
+        <div class="floor-line"></div>
+    </header>
 
-<main>
-    {@render children()}
-</main>
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-12">
+        {@render children()}
+    </main>
+
+    <!-- The ground from the game, with the corner art on both sides -->
+    <footer
+        class="relative mt-20 h-44 bg-gd-ground-tint bg-[url('/gd/ground.png')] bg-size-[176px_176px] bg-repeat-x bg-blend-multiply"
+    >
+        <div class="floor-line"></div>
+        <div
+            class="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-1 px-28 pt-8 text-center text-base text-ink-200 sm:px-40"
+        >
+            <p>LemonList · the demon list of our community, from Easy Demons up.</p>
+            <p>Not affiliated with RobTop Games.</p>
+        </div>
+        <img
+            src={asset('gd/corner.png')}
+            alt=""
+            class="pointer-events-none absolute bottom-0 left-0 w-24 sm:w-32"
+        />
+        <img
+            src={asset('gd/corner.png')}
+            alt=""
+            class="pointer-events-none absolute right-0 bottom-0 w-24 -scale-x-100 sm:w-32"
+        />
+    </footer>
+</div>
