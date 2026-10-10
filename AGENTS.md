@@ -1,6 +1,6 @@
 # LemonList
 
-Demonlist / Pointercrate alternative for a local Geometry Dash community.
+Demonlist / Pointercrate alternative for a local Geometry Dash community, covering demons starting from Easy Demons.
 
 ## Project Configuration
 
@@ -11,7 +11,7 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community.
 
 ## Product Overview
 
-- Restricted to **Easy Demons** (no Extreme, no 150 demons).
+- A Demon list **starting from Easy Demons**: unlike classic lists that only rank the hardest demons, the lowest difficulty included is Easy Demon.
 - Two lists: **Main List** (verified levels) and **Future List** (levels ready to be verified but not placed yet).
 - Players rate how _engaging_ a level was; only players who beat the level can rate, and the final engagement is built from all ratings.
 - Both the original in-game rating and a custom difficulty are stored to put difficulty in perspective.
@@ -21,12 +21,16 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community.
 ## Tech Decisions
 
 - Auth: **Better Auth** (`src/lib/server/auth.ts`); never write auth from scratch. Regenerate its schema with `pnpm auth:schema`.
+    - Email + password with required email verification, `username` plugin (login by email or username), change email (old address confirms, new address verifies), password reset, account deletion (password + email confirmation).
+    - Pages call Better Auth through the client (`src/lib/auth-client.ts`), not `auth.api` in form actions, so requests go through `/api/auth` and get Better Auth's rate limiting and origin checks.
+    - Signed-in user is in `locals.user` (set in `src/hooks.server.ts`) and exposed to pages as `data.user` by the root layout. `/dashboard/*` requires a session; the `(guest)` route group redirects signed-in users away.
+- Email: **nodemailer** (`src/lib/server/mail.ts`). If `SMTP_URL` is empty, emails are printed to the server console (development).
 - Database: **SQLite via Drizzle ORM** (`better-sqlite3`), code in `src/lib/server/db`. Schema changes: `pnpm db:push` (dev) or `db:generate` + `db:migrate`.
 - Media (avatars, level previews): **local disk on the VPS** (no S3/R2/CDN; this is a small local community project, don't overcomplicate). Keep uploads outside `build/` and `static/` in a configurable directory, served through a server route, with size/type validation.
 - Styling: **Tailwind CSS** (stylesheet: `src/routes/layout.css`).
 - General rule: prefer a library over hand-written code, except where a library would be overhead or the task is trivial.
-- Env vars live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`.
-- Not yet implemented: the DB schema for the demon list itself, auth pages, upload handling, UI.
+- Env vars are declared in `src/env.ts` and live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`, `SMTP_URL`, `MAIL_FROM`.
+- Not yet implemented: the DB schema for the demon list itself, admin roles/tools, manual account verification, upload handling, UI design.
 
 ## Commands
 
