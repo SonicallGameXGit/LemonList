@@ -348,7 +348,28 @@ export function getEngagementDistribution(levelId: number) {
     )
 }
 
+// The verifier beat the level too, a verified level counts like a completion
+function isVerifier(levelId: number, playerId: string) {
+    const row = db
+        .select({ id: level.id })
+        .from(level)
+        .where(
+            and(
+                eq(level.id, levelId),
+                eq(level.verifierId, playerId),
+                eq(level.verificationProgress, 100),
+            ),
+        )
+        .get()
+
+    return row !== undefined
+}
+
 export function hasCompleted(levelId: number, playerId: string) {
+    if (isVerifier(levelId, playerId)) {
+        return true
+    }
+
     const row = db
         .select({ id: record.id })
         .from(record)
@@ -399,6 +420,51 @@ function selectCompletions(where?: SQL) {
     return bestPerPlayer(rows)
 }
 
+// Verified levels of the Main List, the verifier gets them like completions
+function selectVerifications(where?: SQL) {
+    return db
+        .select({ level: levelRefColumns, username: verifier.username })
+        .from(level)
+        .innerJoin(verifier, eq(verifier.id, level.verifierId))
+        .where(
+            and(
+                where,
+                isNotNull(level.position),
+                eq(level.verificationProgress, 100),
+                visiblePlayer(verifier),
+            ),
+        )
+        .orderBy(asc(level.position))
+        .all()
+}
+
+// Levels beaten by every player (completions and verifications), the hardest first
+function beatenLevels() {
+    const beaten = new Map<string, Map<number, LevelRefRow>>()
+    const add = (username: string | null, row: LevelRefRow) => {
+        if (username === null) {
+            return
+        }
+
+        const levels = beaten.get(username) ?? new Map<number, LevelRefRow>()
+        levels.set(row.id, row)
+        beaten.set(username, levels)
+    }
+
+    for (const row of selectCompletions()) {
+        add(row.player.username, row.level)
+    }
+
+    for (const row of selectVerifications()) {
+        add(row.username, row.level)
+    }
+
+    return (username: string) =>
+        [...(beaten.get(username)?.values() ?? [])].sort(
+            (a, b) => (a.position ?? 0) - (b.position ?? 0),
+        )
+}
+
 export function getLeaderboard(): LeaderboardEntry[] {
     const players = db
         .select({ ...playerColumns(user), accountVerified: user.accountVerified })
@@ -406,7 +472,7 @@ export function getLeaderboard(): LeaderboardEntry[] {
         .where(and(visiblePlayer(), eq(user.emailVerified, true)))
         .all()
 
-    const completions = Map.groupBy(selectCompletions(), (row) => row.player.username)
+    const beatenBy = beatenLevels()
 
     const entries = players.flatMap((player) => {
         const ref = toPlayerRef(player)
@@ -416,7 +482,7 @@ export function getLeaderboard(): LeaderboardEntry[] {
         }
 
         // Sorted by position, so the first one is the hardest
-        const beaten = completions.get(ref.username) ?? []
+        const beaten = beatenBy(ref.username)
         const hardest = beaten[0]
 
         return [
@@ -424,10 +490,10 @@ export function getLeaderboard(): LeaderboardEntry[] {
                 rank: 0,
                 player: ref,
                 points: roundPoints(
-                    beaten.reduce((sum, row) => sum + pointsFor(row.level.position ?? 0), 0),
+                    beaten.reduce((sum, row) => sum + pointsFor(row.position ?? 0), 0),
                 ),
                 completions: beaten.length,
-                hardest: hardest === undefined ? null : toLevelRef(hardest.level),
+                hardest: hardest === undefined ? null : toLevelRef(hardest),
                 accountVerified: player.accountVerified,
             },
         ]
@@ -486,12 +552,7 @@ export function getPlayerProfile(playerId: string, username: string) {
             .filter((row) => !completedIds.has(row.level.id)),
     ).sort((a, b) => (a.level.position ?? 0) - (b.level.position ?? 0))
 
-    const verified = db
-        .select(levelRefColumns)
-        .from(level)
-        .where(and(eq(level.verifierId, playerId), isNotNull(level.position)))
-        .orderBy(asc(level.position))
-        .all()
+    const verified = selectVerifications(eq(level.verifierId, playerId)).map((row) => row.level)
 
     return {
         rank: entry.rank,
@@ -524,9 +585,20 @@ export function getLevelsToRate(playerId: string) {
             .map((row) => row.levelId),
     )
 
-    return selectCompletions(eq(record.playerId, playerId))
-        .filter((row) => !rated.has(row.level.id))
-        .map((row) => toLevelRef(row.level))
+    const beaten = new Map<number, LevelRefRow>()
+
+    for (const row of selectCompletions(eq(record.playerId, playerId))) {
+        beaten.set(row.level.id, row.level)
+    }
+
+    for (const row of selectVerifications(eq(level.verifierId, playerId))) {
+        beaten.set(row.level.id, row.level)
+    }
+
+    return [...beaten.values()]
+        .filter((row) => !rated.has(row.id))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .map(toLevelRef)
 }
 
 export function getRecentRecords(limit: number) {
@@ -585,8 +657,12 @@ export function getListStats() {
     }
 }
 
-// Best approved progress of the player on the level, 0 without records
+// Best approved progress of the player on the level, 0 without records, 100 for the verifier
 export function getBestProgress(levelId: number, playerId: string) {
+    if (isVerifier(levelId, playerId)) {
+        return 100
+    }
+
     const row = db
         .select({ progress: record.progress })
         .from(record)
