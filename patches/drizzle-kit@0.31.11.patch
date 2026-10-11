@@ -1,0 +1,60 @@
+diff --git a/api.js b/api.js
+index f4ecb91959f62fc938416a0585458c0a710af161..15fa3cc74999a9a8858111080103d702306d787b 100644
+--- a/api.js
++++ b/api.js
+@@ -24532,7 +24532,6 @@ ${withStyle.errorWarning(
+       const namedCheckPattern = /CONSTRAINT\s*["']?(\w+)["']?\s*CHECK\s*\((.*?)\)/gi;
+       const unnamedCheckPattern = /CHECK\s*\((.*?)\)/gi;
+       let checkCounter = 0;
+-      const checkConstraints = {};
+       const checks = await db.query(`SELECT
+ 		  name as "tableName",
+ 		  sql as "sql"
+@@ -24542,6 +24541,7 @@ ${withStyle.errorWarning(
+       for (const check of checks) {
+         if (!tablesFilter(check.tableName)) continue;
+         const { tableName, sql } = check;
++        const checkConstraints = {};
+         let namedChecks = [...sql.matchAll(namedCheckPattern)];
+         if (namedChecks.length > 0) {
+           namedChecks.forEach(([_3, checkName, checkValue]) => {
+diff --git a/api.mjs b/api.mjs
+index a940272dfb05accf57a472c46c52652ec9ad0080..999dbaaef57ca0e6390876b5007cc4ef5d20992f 100644
+--- a/api.mjs
++++ b/api.mjs
+@@ -24555,7 +24555,6 @@ ${withStyle.errorWarning(
+       const namedCheckPattern = /CONSTRAINT\s*["']?(\w+)["']?\s*CHECK\s*\((.*?)\)/gi;
+       const unnamedCheckPattern = /CHECK\s*\((.*?)\)/gi;
+       let checkCounter = 0;
+-      const checkConstraints = {};
+       const checks = await db.query(`SELECT
+ 		  name as "tableName",
+ 		  sql as "sql"
+@@ -24565,6 +24564,7 @@ ${withStyle.errorWarning(
+       for (const check of checks) {
+         if (!tablesFilter(check.tableName)) continue;
+         const { tableName, sql } = check;
++        const checkConstraints = {};
+         let namedChecks = [...sql.matchAll(namedCheckPattern)];
+         if (namedChecks.length > 0) {
+           namedChecks.forEach(([_3, checkName, checkValue]) => {
+diff --git a/bin.cjs b/bin.cjs
+index c28f3e4732f0d911237dc1eb1bc466cefaa1b976..1bd55679f83503c5742b23e70c5fd7b4e493ca57 100755
+--- a/bin.cjs
++++ b/bin.cjs
+@@ -19106,7 +19106,6 @@ ${withStyle.errorWarning(
+       const namedCheckPattern = /CONSTRAINT\s*["']?(\w+)["']?\s*CHECK\s*\((.*?)\)/gi;
+       const unnamedCheckPattern = /CHECK\s*\((.*?)\)/gi;
+       let checkCounter = 0;
+-      const checkConstraints = {};
+       const checks = await db.query(`SELECT
+ 		  name as "tableName",
+ 		  sql as "sql"
+@@ -19116,6 +19115,7 @@ ${withStyle.errorWarning(
+       for (const check2 of checks) {
+         if (!tablesFilter(check2.tableName)) continue;
+         const { tableName, sql } = check2;
++        const checkConstraints = {};
+         let namedChecks = [...sql.matchAll(namedCheckPattern)];
+         if (namedChecks.length > 0) {
+           namedChecks.forEach(([_3, checkName, checkValue]) => {
