@@ -3,6 +3,7 @@
     import { sprite } from '#lib/gd.ts'
     import { formatDate, formatPoints } from '#lib/format.ts'
     import Avatar from '#lib/components/Avatar.svelte'
+    import GdIcon from '#lib/components/GdIcon.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -28,6 +29,17 @@
     <p class="mt-3 text-lg text-ink-200">
         @{player.username} · member since {formatDate(player.createdAt)}
     </p>
+
+    <!-- The icon kit, like the row of icons on game profiles -->
+    {#if data.icons.length > 0}
+        <ul class="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-3" aria-label="Icon kit">
+            {#each data.icons as icon (icon.name)}
+                <li>
+                    <GdIcon svg={icon.svg} label={icon.name} class="size-12 sm:size-14" />
+                </li>
+            {/each}
+        </ul>
+    {/if}
 
     <!-- Stats row, like on game profiles -->
     <dl class="mt-8 flex flex-wrap justify-center gap-x-10 gap-y-4 gd-title text-3xl">

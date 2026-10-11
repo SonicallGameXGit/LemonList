@@ -43,6 +43,9 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - Interactions are form actions (`use:enhance`) validated with **valibot** helpers from `src/lib/server/forms.ts` (every action returns `{ action, error, success }`). Mutations live in `src/lib/server/list-actions.ts` (throw `ActionError` for user-facing errors). Actions must call `requireUser`/`requireAdmin` (`src/lib/server/access.ts`) themselves, layout loads don't protect actions.
 - Admins: `role` contains `admin` (Better Auth admin plugin). Make the first admin with `pnpm admin <username or email>` (`--remove`, `--list`); after that admins manage roles on `/admin/players`. Roles and bans go through `authClient.admin` (bans sign the player out); account verification and avatar removal are form actions. Records of unverified accounts can't be approved.
 - Admin pages under `/admin` (records review, players, add/edit level). Admins reorder the Main List by dragging the arrow handle (SortableJS, `src/lib/sortable.ts`) or with the arrow keys; `placeLevel` shifts the other levels and writes `list_change`.
+- Icon kit (`/dashboard/icon-kit`, a GD-style garage): instead of uploading an avatar, players pick an icon of every mode (cube, ship, ball, UFO, wave, robot, spider, swing, jetpack), the colors (the game's 107, primary/secondary/glow) and glow. The last picked mode is shown, like on game leaderboards. Saving stores the kit as JSON in `user.iconKit` and renders the shown icon (sharp, server) into the regular avatar; profiles show the whole kit.
+    - `pnpm icons "<Geometry Dash>/Resources"` extracts the icons from the game into `static/gd/icons/<mode>/<id>.png` (frames repacked in one column), `static/gd/icons/manifest.json` (frames, robot/spider idle poses) and the garage buttons into `static/gd/garage`. Rerun after game updates that add icons.
+    - `src/lib/icons.ts` composes icons into SVG (layers, tints, poses; no SvelteKit imports), `src/lib/icon-kit.ts` loads and validates the manifest and kits, `src/lib/server/icons.ts` renders a kit to PNG. Show icons with `GdIcon`. The manifest is too big for page data: the garage loads it in the browser, the server reads it with `event.fetch`.
 - Uploads: production needs `BODY_SIZE_LIMIT=10M` for adapter-node (default 512K), previews can be up to 8 MB.
 
 ## Commands
@@ -55,6 +58,7 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - `pnpm db:seed` - sample data for development (`--reset` replaces all list data)
 - `pnpm admin <username or email>` - make a player an admin (`--remove`, `--list`)
 - `pnpm difficulties` - add the Demons In Between difficulties to our own meter
+- `pnpm icons "<Geometry Dash>/Resources"` - extract the player icons from the game for the icon kit
 
 ## Code Style (mandatory)
 

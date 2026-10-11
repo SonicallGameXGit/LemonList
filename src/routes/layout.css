@@ -200,6 +200,15 @@
         @apply flex flex-col gap-2 gd-title text-lg;
     }
 
+    /* Color button of the garage, tinted with --color like the game does */
+    .gd-swatch {
+        background:
+            url('/gd/garage/color.png') center / contain no-repeat,
+            var(--color);
+        background-blend-mode: multiply;
+        mask: url('/gd/garage/color.png') center / contain no-repeat;
+    }
+
     .gd-link {
         @apply text-gd-blue hover:underline;
     }

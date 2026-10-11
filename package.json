@@ -19,6 +19,7 @@
         "db:seed": "tsx --env-file=.env scripts/seed.ts",
         "admin": "tsx --env-file=.env scripts/admin.ts",
         "difficulties": "tsx --env-file=.env scripts/difficulties.ts",
+        "icons": "tsx scripts/icons.ts",
         "auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
     },
     "devDependencies": {
@@ -30,6 +31,7 @@
         "@types/better-sqlite3": "^9.6.0",
         "@types/node": "^22",
         "@types/nodemailer": "^8.0.2",
+        "@types/plist": "^3.0.5",
         "@types/sortablejs": "^1.15.9",
         "auth": "^1.6.24",
         "better-auth": "^1.6.24",
@@ -39,6 +41,7 @@
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-svelte": "^3.19.0",
         "globals": "^17.6.0",
+        "plist": "^5.0.0",
         "prettier": "^3.8.3",
         "prettier-plugin-svelte": "^4.1.0",
         "prettier-plugin-tailwindcss": "^0.8.0",

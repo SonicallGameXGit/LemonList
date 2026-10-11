@@ -202,7 +202,7 @@
                         class="gd-input p-2 font-sans text-base [-webkit-text-stroke:0] file:mr-3 file:cursor-pointer file:rounded-lg file:border-2 file:border-black file:bg-gd-light file:px-3 file:py-1 file:font-gd file:text-white"
                     />
                     <span class="font-sans text-base text-ink-200 [-webkit-text-stroke:0]">
-                        PNG, JPEG or WebP, up to 2 MB.
+                        PNG, JPEG or WebP, up to 2 MB. Or build your icon in the Icon Kit.
                     </span>
                 </label>
             </div>
@@ -217,6 +217,9 @@
             <div class="flex flex-wrap gap-3">
                 <GdButton type="submit" color="cyan" size="sm" disabled={uploading}>
                     {uploading ? 'Uploading...' : 'Upload'}
+                </GdButton>
+                <GdButton href={resolve('/dashboard/icon-kit')} color="pink" size="sm">
+                    Build an icon
                 </GdButton>
                 {#if data.user.hasAvatar}
                     <GdButton

@@ -7,6 +7,7 @@ import { MediaKind, deleteMedia, saveImage } from '#lib/server/media.ts'
 import { ActionError } from '#lib/server/forms.ts'
 import { getBestProgress, hasCompleted, hasPendingRecord } from '#lib/server/list.ts'
 import { GameDifficulty, ListChangeKind, RecordStatus } from '#lib/list.ts'
+import type { IconKit } from '#lib/icons.ts'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -108,10 +109,18 @@ export function rateLevel(playerId: string, levelId: number, score: number) {
         .run()
 }
 
-function setAvatarKey(userId: string, key: string | null) {
+// The icon kit is kept when the avatar changes, so the garage remembers it
+function setAvatarKey(userId: string, key: string | null, iconKit?: IconKit) {
     const previous = db.select({ avatar: user.avatar }).from(user).where(eq(user.id, userId)).get()
 
-    db.update(user).set({ avatar: key }).where(eq(user.id, userId)).run()
+    db.update(user)
+        .set(
+            iconKit === undefined
+                ? { avatar: key }
+                : { avatar: key, iconKit: JSON.stringify(iconKit) },
+        )
+        .where(eq(user.id, userId))
+        .run()
 
     return previous === undefined ? null : previous.avatar
 }
@@ -119,6 +128,16 @@ function setAvatarKey(userId: string, key: string | null) {
 export async function setAvatar(userId: string, image: Uint8Array) {
     const key = await saveImage(MediaKind.Avatar, image)
     const previous = setAvatarKey(userId, key)
+
+    if (previous !== null) {
+        await deleteMedia(previous)
+    }
+}
+
+// The icon built in the garage becomes the avatar, `image` is its render (renderKitIcon)
+export async function setIconKit(userId: string, iconKit: IconKit, image: Uint8Array) {
+    const key = await saveImage(MediaKind.Avatar, image)
+    const previous = setAvatarKey(userId, key, iconKit)
 
     if (previous !== null) {
         await deleteMedia(previous)

@@ -53,6 +53,8 @@ export const auth = betterAuth({
         additionalFields: {
             // Media key of the uploaded avatar, null shows the default cube
             avatar: { type: 'string', required: false, input: false },
+            // The icon kit built in the garage (JSON of IconKit), null until the first save
+            iconKit: { type: 'string', required: false, input: false },
             // Manual verification by an admin, protects players from impersonation
             accountVerified: { type: 'boolean', required: true, defaultValue: false, input: false },
         },

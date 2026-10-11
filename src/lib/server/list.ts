@@ -520,6 +520,7 @@ export function getPlayer(username: string) {
             id: user.id,
             ...playerColumns(user),
             accountVerified: user.accountVerified,
+            iconKit: user.iconKit,
             createdAt: user.createdAt,
         })
         .from(user)

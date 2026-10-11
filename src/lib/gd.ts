@@ -1,5 +1,6 @@
 import { asset } from '$app/paths'
 import { GameDifficulty, gameDifficultyNames, type DifficultyRef, type Level } from '#lib/list.ts'
+import type { IconMode } from '#lib/icons.ts'
 
 // Geometry Dash sprites from static/gd
 export type SpriteName =
@@ -26,6 +27,14 @@ export type SpriteName =
 
 export function sprite(name: SpriteName) {
     return asset(`gd/${name}.png`)
+}
+
+// Buttons of the garage from static/gd/garage (written by scripts/icons.ts)
+export type GarageSpriteName =
+    `${IconMode}-${'on' | 'off'}` | 'select' | 'color' | 'check-on' | 'check-off' | 'paint'
+
+export function garageSprite(name: GarageSpriteName) {
+    return asset(`gd/garage/${name}.png`)
 }
 
 // Faces of the game difficulties, our own meter has uploaded faces (ListDifficulty.faceUrl)
