@@ -85,6 +85,8 @@ export type Level = LevelRef & {
     gameDifficulty: GameDifficulty
     // Our own difficulty, null is N/A (not decided yet)
     listDifficulty: ListDifficulty | null
+    // Place on the Future List starting from 1 (the hardest), null on the Main List
+    futurePosition: number | null
     // Average engagement rating from 1 to 10, null if nobody rated it yet
     engagement: number | null
     ratingsCount: number

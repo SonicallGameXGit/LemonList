@@ -11,8 +11,8 @@
     type Props = {
         level: Level
         compact?: boolean
-        // Shows the drag handle (admins on the Main List), the arrow keys on it move the level
-        // by one place. Drag and drop itself is done by the list
+        // Shows the drag handle (admins on the Main or Future List), the arrow keys on it move the
+        // level by one place of its list. Drag and drop itself is done by the list
         move?: (position: number) => void
     }
 
@@ -21,12 +21,14 @@
 
     const href = $derived(resolve('/levels/[id]', { id: String(level.id) }))
     const difficulty = $derived(levelDifficultyRef(level))
+    // Place on the list the level is on
+    const place = $derived(level.position ?? level.futurePosition)
 </script>
 
 <li>
     <div class="flex items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6">
-        {#if move !== undefined && level.position !== null}
-            {@const position = level.position}
+        {#if move !== undefined && place !== null}
+            {@const position = place}
             <!-- Up and down arrows, like the move buttons of the editor -->
             <button
                 type="button"

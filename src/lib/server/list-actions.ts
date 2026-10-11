@@ -1,11 +1,16 @@
 // Changes of the demon list made by players (records, ratings, avatars) and admins (levels, reviews,
 // verification). Throws ActionError with a message that is safe to show
-import { and, count, eq, gt, gte, isNotNull, lt, lte, ne, sql } from 'drizzle-orm'
+import { and, count, eq, gt, gte, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
 import { difficulty, level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
 import { MediaKind, deleteMedia, saveImage } from '#lib/server/media.ts'
 import { ActionError } from '#lib/server/forms.ts'
-import { getBestProgress, hasCompleted, hasPendingRecord } from '#lib/server/list.ts'
+import {
+    futureListOrder,
+    getBestProgress,
+    hasCompleted,
+    hasPendingRecord,
+} from '#lib/server/list.ts'
 import { GameDifficulty, ListChangeKind, RecordStatus } from '#lib/list.ts'
 import type { IconKit } from '#lib/icons.ts'
 
@@ -227,8 +232,9 @@ function placeLevel(
             .set({ position: sql`${level.position} + 1` })
             .where(gte(level.position, to))
             .run()
+        // Coming back to the Future List later puts the level at its end, not at its old place
         tx.update(level)
-            .set({ position: to, placedAt: new Date() })
+            .set({ position: to, futurePosition: null, placedAt: new Date() })
             .where(eq(level.id, current.id))
             .run()
         log(ListChangeKind.Placed, to)
@@ -280,6 +286,35 @@ export function moveLevel(levelId: number, position: number | null) {
 
     db.transaction((tx) => {
         placeLevel(tx, target, position)
+    })
+}
+
+// Moves a level of the Future List to the place (1 is the hardest). Renumbers the whole list, so
+// gaps and levels without a place are fixed on the way
+export function moveFutureLevel(levelId: number, place: number) {
+    const target = findLevel(levelId)
+
+    if (target.position !== null) {
+        throw new ActionError('This level is on the Main List now')
+    }
+
+    db.transaction((tx) => {
+        const ids = tx
+            .select({ id: level.id })
+            .from(level)
+            .where(isNull(level.position))
+            .orderBy(...futureListOrder)
+            .all()
+            .map((row) => row.id)
+        const reordered = ids.filter((id) => id !== levelId)
+        reordered.splice(clamp(place, 1, ids.length) - 1, 0, levelId)
+
+        reordered.forEach((id, index) => {
+            tx.update(level)
+                .set({ futurePosition: index + 1 })
+                .where(eq(level.id, id))
+                .run()
+        })
     })
 }
 

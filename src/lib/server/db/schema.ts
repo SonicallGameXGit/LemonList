@@ -62,6 +62,9 @@ export const level = sqliteTable(
         // Place on the Main List starting from 1, null means the level is on the Future List.
         // Not unique, so levels can be shifted one by one inside a transaction
         position: integer('position'),
+        // Order of the Future List, 1 is the hardest. Null on the Main List, and for levels that
+        // just joined the Future List (they go to its end until an admin moves them)
+        futurePosition: integer('future_position'),
         placedAt: integer('placed_at', { mode: 'timestamp_ms' }),
         createdAt: createdAt(),
     },

@@ -39,6 +39,15 @@ export function pointsFor(position: number) {
     return Math.round(250 * Math.pow(0.88, position - 1) * 100) / 100
 }
 
+// Order of the Future List: the places set by the admins, then the levels without one (they just
+// joined it) with the closest to being verified first
+export const futureListOrder = [
+    sql`${level.futurePosition} is null`,
+    asc(level.futurePosition),
+    desc(level.verificationProgress),
+    asc(level.createdAt),
+]
+
 function roundPoints(points: number) {
     return Math.round(points * 100) / 100
 }
@@ -210,6 +219,7 @@ function selectLevels(where: SQL | undefined) {
             verificationProgress: level.verificationProgress,
             gameDifficulty: level.gameDifficulty,
             listDifficulty: difficultyColumns,
+            futurePosition: level.futurePosition,
             placedAt: level.placedAt,
             createdAt: level.createdAt,
             verifier: playerColumns(verifier),
@@ -218,7 +228,7 @@ function selectLevels(where: SQL | undefined) {
         .leftJoin(verifier, and(eq(verifier.id, level.verifierId), visiblePlayer(verifier)))
         .leftJoin(difficulty, eq(difficulty.id, level.listDifficultyId))
         .where(where)
-        .orderBy(asc(level.position), desc(level.verificationProgress), asc(level.createdAt))
+        .orderBy(asc(level.position), ...futureListOrder)
         .all()
 
     const statsOf = levelStats(where)
@@ -236,6 +246,7 @@ function selectLevels(where: SQL | undefined) {
             gameDifficulty: row.gameDifficulty,
             listDifficulty:
                 row.listDifficulty === null ? null : toListDifficulty(row.listDifficulty),
+            futurePosition: row.position === null ? row.futurePosition : null,
             engagement: stats.engagement,
             ratingsCount: stats.ratingsCount,
             points: row.position === null ? 0 : pointsFor(row.position),
@@ -249,9 +260,12 @@ export function getMainList() {
     return selectLevels(isNotNull(level.position))
 }
 
-// The closest to being verified first
+// The hardest first. Places come from the order, the stored ones can have gaps or be missing
 export function getFutureList() {
-    return selectLevels(isNull(level.position))
+    return selectLevels(isNull(level.position)).map((row, index) => ({
+        ...row,
+        futurePosition: index + 1,
+    }))
 }
 
 export function getLevel(id: number) {

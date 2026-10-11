@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { deserialize } from '$app/forms'
     import { refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
     import type { Level } from '#lib/list.ts'
     import { naDifficultyRef } from '#lib/gd.ts'
+    import { sendMove } from '#lib/move-level.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -88,29 +88,7 @@
 
         ordered = reordered.map((other, index) => ({ ...other, position: index + 1 }))
         moving = true
-        moveError = null
-
-        const body = new FormData()
-        body.set('level', String(level.id))
-        body.set('position', String(position))
-
-        try {
-            const response = await fetch('?/move', {
-                method: 'POST',
-                body,
-                headers: { 'x-sveltekit-action': 'true' },
-            })
-            const result = deserialize(await response.text())
-
-            if (result.type === 'failure') {
-                const error = result.data?.error
-                moveError = typeof error === 'string' ? error : "Couldn't move the level"
-            } else if (result.type === 'error') {
-                moveError = "Couldn't move the level"
-            }
-        } catch {
-            moveError = "Couldn't reach the server"
-        }
+        moveError = await sendMove(level.id, position)
 
         await refreshAll()
         moving = false
