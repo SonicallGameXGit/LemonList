@@ -3,11 +3,15 @@ import { requireAdmin } from '#lib/server/access.ts'
 import { formImage, run } from '#lib/server/forms.ts'
 import { parseLevelForm } from '#lib/server/level-form.ts'
 import { createLevel } from '#lib/server/list-actions.ts'
-import { getMainListSize, getPlayerUsernames } from '#lib/server/list.ts'
+import { getDifficulties, getMainListSize, getPlayerUsernames } from '#lib/server/list.ts'
 import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {
-    return { players: getPlayerUsernames(), mainListSize: getMainListSize() }
+    return {
+        players: getPlayerUsernames(),
+        difficulties: getDifficulties(),
+        mainListSize: getMainListSize(),
+    }
 }
 
 export const actions = {

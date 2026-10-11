@@ -14,13 +14,14 @@ import {
     type SQL,
 } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
-import { level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
-import { avatarUrl, levelThumbnailUrl } from '#lib/server/media.ts'
+import { difficulty, level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
+import { avatarUrl, levelThumbnailUrl, mediaUrl } from '#lib/server/media.ts'
 import { isAdminRole } from '#lib/auth-rules.ts'
 import {
     ENGAGEMENT_MAX,
     PlayerFilter,
     RecordStatus,
+    type AdminDifficulty,
     type AdminPlayer,
     type LeaderboardEntry,
     type Level,
@@ -28,6 +29,7 @@ import {
     type LevelDraft,
     type LevelRef,
     type ListChange,
+    type ListDifficulty,
     type PlayerRef,
     type ReviewRecord,
 } from '#lib/list.ts'
@@ -108,6 +110,49 @@ function toLevelRef(row: LevelRefRow): LevelRef {
     }
 }
 
+const difficultyColumns = {
+    id: difficulty.id,
+    name: difficulty.name,
+    face: difficulty.face,
+}
+
+type DifficultyRow = {
+    id: number
+    name: string
+    face: string
+}
+
+function toListDifficulty(row: DifficultyRow): ListDifficulty {
+    return { id: row.id, name: row.name, faceUrl: mediaUrl(row.face) }
+}
+
+// Our own difficulty meter, from the easiest
+export function getDifficulties() {
+    return db
+        .select(difficultyColumns)
+        .from(difficulty)
+        .orderBy(asc(difficulty.position), asc(difficulty.id))
+        .all()
+        .map(toListDifficulty)
+}
+
+export function getAdminDifficulties() {
+    const levelsCount = count(level.id)
+
+    return db
+        .select({ ...difficultyColumns, position: difficulty.position, levelsCount })
+        .from(difficulty)
+        .leftJoin(level, eq(level.listDifficultyId, difficulty.id))
+        .groupBy(difficulty.id)
+        .orderBy(asc(difficulty.position), asc(difficulty.id))
+        .all()
+        .map((row): AdminDifficulty => ({
+            ...toListDifficulty(row),
+            position: row.position,
+            levelsCount: row.levelsCount,
+        }))
+}
+
 // Engagement and records of the levels, by level id
 function levelStats(where?: SQL) {
     const ratings = db
@@ -164,13 +209,14 @@ function selectLevels(where: SQL | undefined) {
             creator: level.creator,
             verificationProgress: level.verificationProgress,
             gameDifficulty: level.gameDifficulty,
-            listDifficulty: level.listDifficulty,
+            listDifficulty: difficultyColumns,
             placedAt: level.placedAt,
             createdAt: level.createdAt,
             verifier: playerColumns(verifier),
         })
         .from(level)
         .leftJoin(verifier, and(eq(verifier.id, level.verifierId), visiblePlayer(verifier)))
+        .leftJoin(difficulty, eq(difficulty.id, level.listDifficultyId))
         .where(where)
         .orderBy(asc(level.position), desc(level.verificationProgress), asc(level.createdAt))
         .all()
@@ -188,7 +234,8 @@ function selectLevels(where: SQL | undefined) {
             verificationProgress: row.verificationProgress,
             videoUrl: row.videoUrl,
             gameDifficulty: row.gameDifficulty,
-            listDifficulty: row.listDifficulty,
+            listDifficulty:
+                row.listDifficulty === null ? null : toListDifficulty(row.listDifficulty),
             engagement: stats.engagement,
             ratingsCount: stats.ratingsCount,
             points: row.position === null ? 0 : pointsFor(row.position),
@@ -692,7 +739,7 @@ export function getLevelDraft(id: number): LevelDraft | undefined {
             creator: level.creator,
             verificationProgress: level.verificationProgress,
             gameDifficulty: level.gameDifficulty,
-            listDifficulty: level.listDifficulty,
+            listDifficultyId: level.listDifficultyId,
             verifier: verifier.username,
         })
         .from(level)
@@ -715,7 +762,7 @@ export function getLevelDraft(id: number): LevelDraft | undefined {
         thumbnailUrl: levelThumbnailUrl(row.preview, row.videoUrl),
         hasPreview: row.preview !== null,
         gameDifficulty: row.gameDifficulty,
-        listDifficulty: row.listDifficulty,
+        listDifficultyId: row.listDifficultyId,
         position: row.position,
     }
 }

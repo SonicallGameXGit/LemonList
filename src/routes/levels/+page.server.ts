@@ -2,11 +2,11 @@ import * as v from 'valibot'
 import { requireAdmin } from '#lib/server/access.ts'
 import { attempt, id, parseForm, requiredInteger } from '#lib/server/forms.ts'
 import { moveLevel } from '#lib/server/list-actions.ts'
-import { getMainList } from '#lib/server/list.ts'
+import { getDifficulties, getMainList } from '#lib/server/list.ts'
 import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {
-    return { levels: getMainList() }
+    return { levels: getMainList(), difficulties: getDifficulties() }
 }
 
 export const actions = {

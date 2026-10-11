@@ -15,6 +15,7 @@
     level={null}
     action="?/create"
     players={data.players}
+    difficulties={data.difficulties}
     mainListSize={data.mainListSize}
     error={form?.action === 'create' ? form.error : null}
     submitLabel="Add level"

@@ -1,8 +1,8 @@
 <script lang="ts">
     import { enhance } from '$app/forms'
     import { resolve } from '$app/paths'
-    import { sprite } from '#lib/gd.ts'
-    import { ENGAGEMENT_MAX, difficultyNames } from '#lib/list.ts'
+    import { gameDifficultyRef, levelDifficultyRef, naDifficultyRef, sprite } from '#lib/gd.ts'
+    import { ENGAGEMENT_MAX } from '#lib/list.ts'
     import { formatDate, formatEngagement, formatPoints } from '#lib/format.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
@@ -16,6 +16,7 @@
     let { data, form }: PageProps = $props()
 
     const level = $derived(data.level)
+    const gameDifficulty = $derived(gameDifficultyRef(level.gameDifficulty))
     const maxVotes = $derived(Math.max(1, ...data.distribution))
     const listName = $derived(level.position === null ? 'Future List' : 'Main List')
 
@@ -75,10 +76,7 @@
 
 <section class="mt-12 grid items-center gap-10 md:grid-cols-[11rem_1fr_12rem]">
     <div class="flex items-center justify-center gap-5 md:flex-col md:gap-3">
-        <DifficultyFace
-            difficulty={level.listDifficulty ?? level.gameDifficulty}
-            class="w-28 md:w-36"
-        />
+        <DifficultyFace difficulty={levelDifficultyRef(level)} class="w-28 md:w-36" />
         <div class="text-left md:text-center">
             <p class="gd-title text-3xl text-gd-yellow">
                 {level.position === null ? 'Future' : `#${level.position}`}
@@ -128,10 +126,10 @@
     class="gd-light mx-auto mt-10 flex max-w-3xl flex-wrap items-center justify-center gap-x-12 gap-y-4 px-6 py-4"
 >
     <div class="flex items-center gap-3">
-        <DifficultyFace difficulty={level.gameDifficulty} class="w-14" />
+        <DifficultyFace difficulty={gameDifficulty} class="w-14" />
         <div>
             <p class="text-base">In-game</p>
-            <p class="gd-title text-xl text-gd-blue">{difficultyNames[level.gameDifficulty]}</p>
+            <p class="gd-title text-xl text-gd-blue">{gameDifficulty.name}</p>
         </div>
     </div>
     <div class="flex items-center gap-3">
@@ -139,9 +137,7 @@
         <div>
             <p class="text-base">On LemonList</p>
             <p class="gd-title text-xl text-gd-yellow">
-                {level.listDifficulty === null
-                    ? 'Not decided yet'
-                    : difficultyNames[level.listDifficulty]}
+                {level.listDifficulty === null ? naDifficultyRef().name : level.listDifficulty.name}
             </p>
         </div>
     </div>

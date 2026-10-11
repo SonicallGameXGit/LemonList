@@ -19,6 +19,23 @@ export function sortable(options: SortableOptions): Attachment<HTMLElement> {
             disabled: options.disabled,
             animation: 150,
             ghostClass: 'opacity-40',
+            setData: (dataTransfer, item) => {
+                // Hold the dragged card by the center of its handle instead of its top-left corner
+                const handle = item.querySelector(options.handle)
+
+                if (handle === null) {
+                    return
+                }
+
+                const itemRect = item.getBoundingClientRect()
+                const handleRect = handle.getBoundingClientRect()
+
+                dataTransfer.setDragImage(
+                    item,
+                    handleRect.left - itemRect.left + handleRect.width / 2,
+                    handleRect.top - itemRect.top + handleRect.height / 2,
+                )
+            },
             onStart: (event) => {
                 nextSibling = event.item.nextSibling
             },

@@ -1,20 +1,21 @@
 <script lang="ts">
-    import { difficultySprite } from '#lib/gd.ts'
-    import { difficultyNames, type Difficulty } from '#lib/list.ts'
+    import { naDifficultyRef } from '#lib/gd.ts'
+    import type { DifficultyRef } from '#lib/list.ts'
 
     type Props = {
-        difficulty: Difficulty | null
+        // Null shows N/A
+        difficulty: DifficultyRef | null
         class?: string
     }
 
     let { difficulty, class: className = 'w-14' }: Props = $props()
 
-    const name = $derived(difficulty === null ? 'Not rated yet' : difficultyNames[difficulty])
+    const shown = $derived(difficulty ?? naDifficultyRef())
 </script>
 
 <img
-    src={difficultySprite(difficulty)}
-    alt={name}
-    title={name}
+    src={shown.faceUrl}
+    alt={shown.name}
+    title={shown.name}
     class={['h-auto shrink-0', className]}
 />

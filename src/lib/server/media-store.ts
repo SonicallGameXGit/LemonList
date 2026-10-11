@@ -8,6 +8,7 @@ import sharp from 'sharp'
 export enum MediaKind {
     Avatar = 'avatars',
     Preview = 'previews',
+    DifficultyFace = 'difficulties',
 }
 
 // Every image is re-encoded, so the stored files are always of this type
@@ -17,8 +18,9 @@ type ImageRules = {
     maxBytes: number
     width: number
     height: number
-    // Avatars are game icons with transparency, keep them whole. Previews fill the frame
-    fit: 'contain' | 'cover'
+    // Avatars are game icons with transparency, keep them whole. Previews fill the frame.
+    // Difficulty faces keep their own shape and are only scaled down
+    fit: 'contain' | 'cover' | 'inside'
 }
 
 const MEGABYTE = 1024 * 1024
@@ -26,6 +28,7 @@ const MEGABYTE = 1024 * 1024
 export const imageRules: Record<MediaKind, ImageRules> = {
     [MediaKind.Avatar]: { maxBytes: 2 * MEGABYTE, width: 256, height: 256, fit: 'contain' },
     [MediaKind.Preview]: { maxBytes: 8 * MEGABYTE, width: 1280, height: 720, fit: 'cover' },
+    [MediaKind.DifficultyFace]: { maxBytes: 2 * MEGABYTE, width: 256, height: 256, fit: 'inside' },
 }
 
 const acceptedFormats = ['jpeg', 'png', 'webp']
@@ -75,6 +78,7 @@ export async function writeImage(dir: string, kind: MediaKind, data: Uint8Array)
         .rotate()
         .resize(rules.width, rules.height, {
             fit: rules.fit,
+            withoutEnlargement: rules.fit === 'inside',
             background: { r: 0, g: 0, b: 0, alpha: 0 },
         })
         .webp({ quality: 85 })

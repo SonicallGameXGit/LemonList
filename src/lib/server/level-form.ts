@@ -2,7 +2,7 @@
 import * as v from 'valibot'
 import { CREATOR_MAX_LENGTH, GD_ID_MAX, LEVEL_NAME_MAX_LENGTH } from '#lib/list-rules.ts'
 import { USERNAME_MAX_LENGTH } from '#lib/auth-rules.ts'
-import { Difficulty } from '#lib/list.ts'
+import { GameDifficulty } from '#lib/list.ts'
 import {
     checkbox,
     optionalInteger,
@@ -19,20 +19,9 @@ const levelSchema = v.object({
     creator: requiredText('Creator', CREATOR_MAX_LENGTH),
     gdId: requiredInteger('Level ID', 1, GD_ID_MAX),
     video: optionalUrl('Verification video'),
-    gameDifficulty: v.enum(Difficulty, 'Choose the in-game difficulty'),
-    listDifficulty: v.pipe(
-        v.optional(v.string(), ''),
-        v.union(
-            [
-                v.pipe(
-                    v.literal(''),
-                    v.transform(() => null),
-                ),
-                v.enum(Difficulty),
-            ],
-            'Unknown LemonList difficulty',
-        ),
-    ),
+    gameDifficulty: v.enum(GameDifficulty, 'Choose the in-game difficulty'),
+    // Empty is N/A
+    listDifficulty: optionalInteger('LemonList difficulty', 1, Number.MAX_SAFE_INTEGER),
     verifier: optionalText('Verifier', USERNAME_MAX_LENGTH),
     verificationProgress: requiredInteger('Verification progress', 0, 100),
     position: optionalInteger('Place', 1, Number.MAX_SAFE_INTEGER),
@@ -55,7 +44,7 @@ export function parseLevelForm(action: string, formData: FormData) {
         verificationProgress: data.verificationProgress,
         videoUrl: data.video,
         gameDifficulty: data.gameDifficulty,
-        listDifficulty: data.listDifficulty,
+        listDifficultyId: data.listDifficulty,
         position: data.position,
     }
 

@@ -2,11 +2,11 @@
 // verification). Throws ActionError with a message that is safe to show
 import { and, count, eq, gt, gte, isNotNull, lt, lte, ne, sql } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
-import { level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
+import { difficulty, level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
 import { MediaKind, deleteMedia, saveImage } from '#lib/server/media.ts'
 import { ActionError } from '#lib/server/forms.ts'
 import { getBestProgress, hasCompleted, hasPendingRecord } from '#lib/server/list.ts'
-import { Difficulty, ListChangeKind, RecordStatus } from '#lib/list.ts'
+import { GameDifficulty, ListChangeKind, RecordStatus } from '#lib/list.ts'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -272,8 +272,9 @@ export type LevelInput = {
     verifier: string | null
     verificationProgress: number
     videoUrl: string | null
-    gameDifficulty: Difficulty
-    listDifficulty: Difficulty | null
+    gameDifficulty: GameDifficulty
+    // Null is N/A
+    listDifficultyId: number | null
     // Null keeps the level on the Future List
     position: number | null
 }
@@ -308,6 +309,18 @@ function levelColumns(input: LevelInput, levelId: number | null) {
         verifierId = verifier.id
     }
 
+    if (input.listDifficultyId !== null) {
+        const chosen = db
+            .select({ id: difficulty.id })
+            .from(difficulty)
+            .where(eq(difficulty.id, input.listDifficultyId))
+            .get()
+
+        if (chosen === undefined) {
+            throw new ActionError("This LemonList difficulty doesn't exist anymore")
+        }
+    }
+
     if (input.position !== null && input.verificationProgress !== 100) {
         throw new ActionError(
             'Only verified levels can be placed on the Main List, set the verification progress to 100%',
@@ -322,7 +335,7 @@ function levelColumns(input: LevelInput, levelId: number | null) {
         verificationProgress: input.verificationProgress,
         videoUrl: input.videoUrl,
         gameDifficulty: input.gameDifficulty,
-        listDifficulty: input.listDifficulty,
+        listDifficultyId: input.listDifficultyId,
     }
 }
 
@@ -397,4 +410,137 @@ export async function deleteLevel(levelId: number) {
     if (current.preview !== null) {
         await deleteMedia(current.preview)
     }
+}
+
+// Difficulties of our own meter
+
+function findDifficulty(id: number) {
+    const row = db
+        .select({ id: difficulty.id, face: difficulty.face, position: difficulty.position })
+        .from(difficulty)
+        .where(eq(difficulty.id, id))
+        .get()
+
+    if (row === undefined) {
+        throw new ActionError("This difficulty doesn't exist anymore")
+    }
+
+    return row
+}
+
+function difficultiesCount(tx: Transaction) {
+    return tx.select({ count: count() }).from(difficulty).get()?.count ?? 0
+}
+
+// Names are unique no matter the case, "easy demon" would look like a copy of "Easy Demon"
+function checkDifficultyName(name: string, difficultyId: number | null) {
+    const same = db
+        .select({ name: difficulty.name })
+        .from(difficulty)
+        .where(
+            and(
+                sql`lower(${difficulty.name}) = lower(${name})`,
+                difficultyId === null ? undefined : ne(difficulty.id, difficultyId),
+            ),
+        )
+        .get()
+
+    if (same !== undefined) {
+        throw new ActionError("There's already a difficulty called " + same.name)
+    }
+}
+
+// Moves a difficulty to the position (clamped to the meter), the ones in between shift by one
+function placeDifficulty(tx: Transaction, difficultyId: number, from: number, position: number) {
+    const to = clamp(position, 1, difficultiesCount(tx))
+
+    if (to < from) {
+        tx.update(difficulty)
+            .set({ position: sql`${difficulty.position} + 1` })
+            .where(and(gte(difficulty.position, to), lt(difficulty.position, from)))
+            .run()
+    } else if (to > from) {
+        tx.update(difficulty)
+            .set({ position: sql`${difficulty.position} - 1` })
+            .where(and(gt(difficulty.position, from), lte(difficulty.position, to)))
+            .run()
+    }
+
+    tx.update(difficulty).set({ position: to }).where(eq(difficulty.id, difficultyId)).run()
+}
+
+// Null position puts it at the end, as the hardest
+export async function createDifficulty(name: string, face: Uint8Array, position: number | null) {
+    checkDifficultyName(name, null)
+
+    const key = await saveImage(MediaKind.DifficultyFace, face)
+
+    try {
+        db.transaction((tx) => {
+            const last = difficultiesCount(tx) + 1
+            const created = tx
+                .insert(difficulty)
+                .values({ name, face: key, position: last })
+                .returning({ id: difficulty.id })
+                .get()
+
+            placeDifficulty(tx, created.id, last, position ?? last)
+        })
+    } catch (error) {
+        await deleteMedia(key)
+        throw error
+    }
+}
+
+// Null face keeps the current one
+export async function updateDifficulty(
+    difficultyId: number,
+    name: string,
+    face: Uint8Array | null,
+) {
+    const current = findDifficulty(difficultyId)
+
+    checkDifficultyName(name, difficultyId)
+
+    const key = face === null ? null : await saveImage(MediaKind.DifficultyFace, face)
+
+    try {
+        db.update(difficulty)
+            .set(key === null ? { name } : { name, face: key })
+            .where(eq(difficulty.id, difficultyId))
+            .run()
+    } catch (error) {
+        if (key !== null) {
+            await deleteMedia(key)
+        }
+
+        throw error
+    }
+
+    if (key !== null) {
+        await deleteMedia(current.face)
+    }
+}
+
+export function moveDifficulty(difficultyId: number, position: number) {
+    const current = findDifficulty(difficultyId)
+
+    db.transaction((tx) => {
+        placeDifficulty(tx, current.id, current.position, position)
+    })
+}
+
+// Levels with this difficulty become N/A
+export async function deleteDifficulty(difficultyId: number) {
+    const current = findDifficulty(difficultyId)
+
+    db.transaction((tx) => {
+        tx.delete(difficulty).where(eq(difficulty.id, difficultyId)).run()
+        tx.update(difficulty)
+            .set({ position: sql`${difficulty.position} - 1` })
+            .where(gt(difficulty.position, current.position))
+            .run()
+    })
+
+    await deleteMedia(current.face)
 }

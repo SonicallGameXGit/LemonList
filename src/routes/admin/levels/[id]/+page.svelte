@@ -31,6 +31,7 @@
     level={data.level}
     action="?/save"
     players={data.players}
+    difficulties={data.difficulties}
     mainListSize={data.mainListSize}
     error={form?.action === 'save' ? form.error : null}
     submitLabel="Save"

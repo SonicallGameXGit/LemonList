@@ -3,7 +3,12 @@ import { requireAdmin } from '#lib/server/access.ts'
 import { formImage, run } from '#lib/server/forms.ts'
 import { parseLevelForm } from '#lib/server/level-form.ts'
 import { deleteLevel, updateLevel } from '#lib/server/list-actions.ts'
-import { getLevelDraft, getMainListSize, getPlayerUsernames } from '#lib/server/list.ts'
+import {
+    getDifficulties,
+    getLevelDraft,
+    getMainListSize,
+    getPlayerUsernames,
+} from '#lib/server/list.ts'
 import type { Actions, PageServerLoad } from './$types'
 
 function levelId(param: string) {
@@ -23,7 +28,12 @@ export const load: PageServerLoad = ({ params }) => {
         error(404, 'Level not found')
     }
 
-    return { level, players: getPlayerUsernames(), mainListSize: getMainListSize() }
+    return {
+        level,
+        players: getPlayerUsernames(),
+        difficulties: getDifficulties(),
+        mainListSize: getMainListSize(),
+    }
 }
 
 export const actions = {

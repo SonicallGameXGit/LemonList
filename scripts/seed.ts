@@ -1,20 +1,21 @@
 // Fills the database with sample data for development: pnpm db:seed
 // Adds sample players (password: lemonlist), levels with generated previews, records, ratings and
-// list history. Refuses to run if there are levels already, pnpm db:seed --reset deletes ALL list
+// list history, and the Demons In Between difficulties if they're missing. Refuses to run if there are levels already, pnpm db:seed --reset deletes ALL list
 // data (levels, records, ratings, history) and the sample players first.
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 import { hashPassword } from 'better-auth/crypto'
-import { count, inArray, isNotNull, like } from 'drizzle-orm'
+import { count, inArray, isNotNull, like, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import sharp from 'sharp'
 import * as schema from '../src/lib/server/db/schema.ts'
-import { Difficulty, ENGAGEMENT_MAX, ListChangeKind, RecordStatus } from '../src/lib/list.ts'
+import { ENGAGEMENT_MAX, GameDifficulty, ListChangeKind, RecordStatus } from '../src/lib/list.ts'
 import { MediaKind, deleteMediaFile, writeImage } from '../src/lib/server/media-store.ts'
+import { addDibDifficulties } from './dib.ts'
 import { drawScene } from './scene.ts'
 
-const { level, listChange, rating, record, user, account } = schema
+const { difficulty, level, listChange, rating, record, user, account } = schema
 
 const databaseUrl = process.env.DATABASE_URL
 const mediaDir =
@@ -96,6 +97,32 @@ if (existing !== undefined && existing.count > 0) {
     process.exit(1)
 }
 
+// Our own difficulties, the levels use them by name
+
+const addedDifficulties = await addDibDifficulties(db, mediaDir)
+
+if (addedDifficulties.length > 0) {
+    console.info(`Added ${addedDifficulties.length} Demons In Between difficulties`)
+}
+
+function difficultyId(name: string | null) {
+    if (name === null) {
+        return null
+    }
+
+    const row = db
+        .select({ id: difficulty.id })
+        .from(difficulty)
+        .where(sql`lower(${difficulty.name}) = lower(${name})`)
+        .get()
+
+    if (row === undefined) {
+        throw new Error('Missing difficulty ' + name)
+    }
+
+    return row.id
+}
+
 // Players
 
 const playerNames = [
@@ -170,8 +197,9 @@ function playerAt(index: number) {
 type LevelSeed = {
     name: string
     creator: string
-    gameDifficulty: Difficulty
-    listDifficulty: Difficulty | null
+    gameDifficulty: GameDifficulty
+    // Name of our own difficulty, null is N/A
+    listDifficulty: string | null
     // Average of the generated ratings, null for no ratings
     engagement: number | null
 }
@@ -180,106 +208,106 @@ const mainSeeds: LevelSeed[] = [
     {
         name: 'Citrus Cataclysm',
         creator: 'CreatorName',
-        gameDifficulty: Difficulty.ExtremeDemon,
-        listDifficulty: Difficulty.ExtremeDemon,
+        gameDifficulty: GameDifficulty.ExtremeDemon,
+        listDifficulty: 'Supreme Demon',
         engagement: 9.1,
     },
     {
         name: 'Sour Factory',
         creator: 'BlockBuilder',
-        gameDifficulty: Difficulty.ExtremeDemon,
-        listDifficulty: Difficulty.ExtremeDemon,
+        gameDifficulty: GameDifficulty.ExtremeDemon,
+        listDifficulty: 'Extreme Demon',
         engagement: 7.4,
     },
     {
         name: 'Zest Overdrive',
         creator: 'CreatorName',
-        gameDifficulty: Difficulty.InsaneDemon,
-        listDifficulty: Difficulty.ExtremeDemon,
+        gameDifficulty: GameDifficulty.InsaneDemon,
+        listDifficulty: 'Brutal Demon',
         engagement: 8.6,
     },
     {
         name: 'Peel Paradox',
         creator: 'Glowstick',
-        gameDifficulty: Difficulty.InsaneDemon,
-        listDifficulty: Difficulty.InsaneDemon,
+        gameDifficulty: GameDifficulty.InsaneDemon,
+        listDifficulty: 'Crazy Demon',
         engagement: 6.9,
     },
     {
         name: 'Lemon Labyrinth',
         creator: 'ShipLord',
-        gameDifficulty: Difficulty.InsaneDemon,
-        listDifficulty: Difficulty.InsaneDemon,
+        gameDifficulty: GameDifficulty.InsaneDemon,
+        listDifficulty: 'Insane Demon',
         engagement: 8.2,
     },
     {
         name: 'Acidic Ascent',
         creator: 'BlockBuilder',
-        gameDifficulty: Difficulty.HardDemon,
-        listDifficulty: Difficulty.InsaneDemon,
+        gameDifficulty: GameDifficulty.HardDemon,
+        listDifficulty: 'Wild Demon',
         engagement: 5.8,
     },
     {
         name: 'Juice Junction',
         creator: 'SawbladeFan',
-        gameDifficulty: Difficulty.HardDemon,
-        listDifficulty: Difficulty.HardDemon,
+        gameDifficulty: GameDifficulty.HardDemon,
+        listDifficulty: 'Harder Demon',
         engagement: 7.7,
     },
     {
         name: 'Rind Runner',
         creator: 'Glowstick',
-        gameDifficulty: Difficulty.HardDemon,
-        listDifficulty: Difficulty.HardDemon,
+        gameDifficulty: GameDifficulty.HardDemon,
+        listDifficulty: 'Hard Demon',
         engagement: 6.3,
     },
     {
         name: 'Tangy Temple',
         creator: 'ShipLord',
-        gameDifficulty: Difficulty.InsaneDemon,
-        listDifficulty: Difficulty.HardDemon,
+        gameDifficulty: GameDifficulty.InsaneDemon,
+        listDifficulty: 'Tricky Demon',
         engagement: 7.1,
     },
     {
         name: 'Squeeze Play',
         creator: 'CreatorName',
-        gameDifficulty: Difficulty.MediumDemon,
-        listDifficulty: Difficulty.HardDemon,
+        gameDifficulty: GameDifficulty.MediumDemon,
+        listDifficulty: 'Moderate Demon',
         engagement: 8.8,
     },
     {
         name: 'Pulp Fiction',
         creator: 'SawbladeFan',
-        gameDifficulty: Difficulty.MediumDemon,
-        listDifficulty: Difficulty.MediumDemon,
+        gameDifficulty: GameDifficulty.MediumDemon,
+        listDifficulty: 'Medium Demon',
         engagement: 6.6,
     },
     {
         name: 'Yellow Wave',
         creator: 'WaveMaker',
-        gameDifficulty: Difficulty.MediumDemon,
-        listDifficulty: Difficulty.MediumDemon,
+        gameDifficulty: GameDifficulty.Insane,
+        listDifficulty: 'Mild Demon',
         engagement: 5.2,
     },
     {
         name: 'Lemonade Stand',
         creator: 'Glowstick',
-        gameDifficulty: Difficulty.EasyDemon,
-        listDifficulty: Difficulty.MediumDemon,
+        gameDifficulty: GameDifficulty.EasyDemon,
+        listDifficulty: 'Casual Demon',
         engagement: 7.9,
     },
     {
         name: 'Seed Spitter',
         creator: 'WaveMaker',
-        gameDifficulty: Difficulty.EasyDemon,
-        listDifficulty: Difficulty.EasyDemon,
+        gameDifficulty: GameDifficulty.Harder,
+        listDifficulty: 'Simple Demon',
         engagement: 4.7,
     },
     {
         name: 'First Squeeze',
         creator: 'BlockBuilder',
-        gameDifficulty: Difficulty.EasyDemon,
-        listDifficulty: Difficulty.EasyDemon,
+        gameDifficulty: GameDifficulty.EasyDemon,
+        listDifficulty: null,
         engagement: null,
     },
 ]
@@ -288,7 +316,7 @@ const futureSeeds: (LevelSeed & { verificationProgress: number; hasVerifier: boo
     {
         name: 'Bitter End',
         creator: 'CreatorName',
-        gameDifficulty: Difficulty.ExtremeDemon,
+        gameDifficulty: GameDifficulty.ExtremeDemon,
         listDifficulty: null,
         engagement: null,
         verificationProgress: 87,
@@ -297,7 +325,7 @@ const futureSeeds: (LevelSeed & { verificationProgress: number; hasVerifier: boo
     {
         name: 'Vitamin Sea',
         creator: 'ShipLord',
-        gameDifficulty: Difficulty.InsaneDemon,
+        gameDifficulty: GameDifficulty.InsaneDemon,
         listDifficulty: null,
         engagement: null,
         verificationProgress: 100,
@@ -306,7 +334,7 @@ const futureSeeds: (LevelSeed & { verificationProgress: number; hasVerifier: boo
     {
         name: 'Citric Storm',
         creator: 'Glowstick',
-        gameDifficulty: Difficulty.HardDemon,
+        gameDifficulty: GameDifficulty.HardDemon,
         listDifficulty: null,
         engagement: null,
         verificationProgress: 54,
@@ -315,7 +343,7 @@ const futureSeeds: (LevelSeed & { verificationProgress: number; hasVerifier: boo
     {
         name: 'Unnamed Lemon',
         creator: 'SawbladeFan',
-        gameDifficulty: Difficulty.MediumDemon,
+        gameDifficulty: GameDifficulty.NA,
         listDifficulty: null,
         engagement: null,
         verificationProgress: 0,
@@ -323,19 +351,26 @@ const futureSeeds: (LevelSeed & { verificationProgress: number; hasVerifier: boo
     },
 ]
 
-const sceneColors: Record<Difficulty, { background: string; ground: string }> = {
-    [Difficulty.EasyDemon]: { background: '#2ac8ff', ground: '#0a7bc2' },
-    [Difficulty.MediumDemon]: { background: '#4cda5b', ground: '#1f8a2c' },
-    [Difficulty.HardDemon]: { background: '#ff8a2a', ground: '#b34a12' },
-    [Difficulty.InsaneDemon]: { background: '#ff4fd0', ground: '#a3168a' },
-    [Difficulty.ExtremeDemon]: { background: '#ff3b3b', ground: '#8f1010' },
+const sceneColors: Record<GameDifficulty, { background: string; ground: string }> = {
+    [GameDifficulty.NA]: { background: '#a0a0a0', ground: '#5a5a5a' },
+    [GameDifficulty.Auto]: { background: '#ffd36b', ground: '#b8861a' },
+    [GameDifficulty.Easy]: { background: '#2ac8ff', ground: '#0a7bc2' },
+    [GameDifficulty.Normal]: { background: '#4cda5b', ground: '#1f8a2c' },
+    [GameDifficulty.Hard]: { background: '#ffd23a', ground: '#b38a0a' },
+    [GameDifficulty.Harder]: { background: '#ff8a2a', ground: '#b34a12' },
+    [GameDifficulty.Insane]: { background: '#ff6fe0', ground: '#a3168a' },
+    [GameDifficulty.EasyDemon]: { background: '#9b6bff', ground: '#5326b3' },
+    [GameDifficulty.MediumDemon]: { background: '#e05cff', ground: '#8a1fa8' },
+    [GameDifficulty.HardDemon]: { background: '#ff5a5a', ground: '#a01c1c' },
+    [GameDifficulty.InsaneDemon]: { background: '#ff3b3b', ground: '#8f1010' },
+    [GameDifficulty.ExtremeDemon]: { background: '#c01818', ground: '#4a0606' },
 }
 
-// A scene in the colors of the difficulty with its demon face, saved like an uploaded preview
-async function drawPreview(difficulty: Difficulty) {
+// A scene in the colors of the game difficulty with its face, saved like an uploaded preview
+async function drawPreview(difficulty: GameDifficulty) {
     const scene = await drawScene({
         ...sceneColors[difficulty],
-        sprite: `difficulties/${difficulty.replace(/^(\w+)-demon$/, 'demon-$1')}.png`,
+        sprite: `difficulties/${difficulty}.png`,
         spriteSize: 260,
     })
 
@@ -357,11 +392,9 @@ const mainLevels = await Promise.all(
                 verifierId: playerAt(index % 4).id,
                 verificationProgress: 100,
                 videoUrl: VIDEO_URL,
-                preview: hasPreview
-                    ? await drawPreview(seed.listDifficulty ?? seed.gameDifficulty)
-                    : null,
+                preview: hasPreview ? await drawPreview(seed.gameDifficulty) : null,
                 gameDifficulty: seed.gameDifficulty,
-                listDifficulty: seed.listDifficulty,
+                listDifficultyId: difficultyId(seed.listDifficulty),
                 position,
                 // Placed the day before, pushing Peel Paradox down
                 placedAt: position === 3 ? daysAgo(1) : daysAgo(10 + position * 9),
@@ -382,7 +415,7 @@ const futureLevels = await Promise.all(
         // The last one has neither a preview nor a video and shows the default scene
         preview: seed.hasVerifier ? await drawPreview(seed.gameDifficulty) : null,
         gameDifficulty: seed.gameDifficulty,
-        listDifficulty: seed.listDifficulty,
+        listDifficultyId: difficultyId(seed.listDifficulty),
         position: null,
         placedAt: null,
         createdAt: daysAgo(2 + index * 5),

@@ -2,8 +2,8 @@
     import { deserialize } from '$app/forms'
     import { refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
-    import { Difficulty, difficultyNames, type Level } from '#lib/list.ts'
-    import { difficultyFilterSprite } from '#lib/gd.ts'
+    import type { Level } from '#lib/list.ts'
+    import { naDifficultyRef } from '#lib/gd.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -17,8 +17,9 @@
     let { data }: PageProps = $props()
 
     let query = $state('')
-    // Like the difficulty filter of the search screen, no selection shows everything
-    let difficulty: Difficulty | null = $state(null)
+    // Like the difficulty filter of the search screen, no selection shows everything. Filters by
+    // the id of our own difficulty, 'na' are the levels without one
+    let difficulty: number | 'na' | null = $state(null)
 
     // Moves show up right away, the next load brings the real order back
     let ordered: Level[] = $derived(data.levels)
@@ -28,19 +29,47 @@
     const admin = $derived(data.user !== null && data.user.admin)
     const filtered = $derived(query.trim() !== '' || difficulty !== null)
 
+    // Only the difficulties the list has, in the order of the meter
+    const difficultyOptions = $derived.by(() => {
+        const used = new Set(
+            data.levels.map((level) =>
+                level.listDifficulty === null ? 'na' : level.listDifficulty.id,
+            ),
+        )
+        const options = data.difficulties
+            .filter((option) => used.has(option.id))
+            .map((option) => ({ value: option.id, difficulty: option }))
+
+        return used.has('na')
+            ? [{ value: 'na' as const, difficulty: naDifficultyRef() }, ...options]
+            : options
+    })
+
+    function matchesDifficulty(level: Level) {
+        if (difficulty === null) {
+            return true
+        }
+
+        if (level.listDifficulty === null) {
+            return difficulty === 'na'
+        }
+
+        return level.listDifficulty.id === difficulty
+    }
+
     const levels = $derived.by(() => {
         const search = query.trim().toLowerCase()
 
         return ordered.filter(
             (level) =>
-                (difficulty === null || level.listDifficulty === difficulty) &&
+                matchesDifficulty(level) &&
                 (search === '' ||
                     level.name.toLowerCase().includes(search) ||
                     level.creator.toLowerCase().includes(search)),
         )
     })
 
-    function toggleDifficulty(option: Difficulty) {
+    function toggleDifficulty(option: number | 'na') {
         difficulty = difficulty === option ? null : option
     }
 
@@ -128,24 +157,35 @@
         <span class="sr-only">Search levels</span>
         <input type="search" class="gd-input" placeholder="Search levels..." bind:value={query} />
     </label>
-    <div class="flex flex-wrap justify-center gap-3 sm:gap-6" role="group" aria-label="Difficulty">
-        {#each Object.values(Difficulty) as option (option)}
-            <button
-                type="button"
-                class={[
-                    'flex w-20 gd-press flex-col items-center gap-1 transition-[filter] sm:w-24',
-                    difficulty !== option && 'brightness-50 hover:brightness-75',
-                ]}
-                aria-pressed={difficulty === option}
-                title={difficultyNames[option]}
-                onclick={() => toggleDifficulty(option)}
-            >
-                <img src={difficultyFilterSprite(option)} alt="" class="w-full" />
-                <span class="gd-title text-sm">{difficultyNames[option].replace(' Demon', '')}</span
+    {#if difficultyOptions.length > 1}
+        <div
+            class="flex flex-wrap justify-center gap-x-2 gap-y-3 sm:gap-x-3"
+            role="group"
+            aria-label="Difficulty"
+        >
+            {#each difficultyOptions as option (option.value)}
+                <button
+                    type="button"
+                    class={[
+                        'flex w-20 gd-press flex-col items-center gap-1 transition-[filter] sm:w-24',
+                        difficulty !== option.value && 'brightness-50 hover:brightness-75',
+                    ]}
+                    aria-pressed={difficulty === option.value}
+                    title={option.difficulty.name}
+                    onclick={() => toggleDifficulty(option.value)}
                 >
-            </button>
-        {/each}
-    </div>
+                    <img
+                        src={option.difficulty.faceUrl}
+                        alt=""
+                        class="size-14 object-contain sm:size-16"
+                    />
+                    <span class="text-center gd-title text-sm leading-tight"
+                        >{option.difficulty.name}</span
+                    >
+                </button>
+            {/each}
+        </div>
+    {/if}
 </div>
 
 {#if data.levels.length === 0}

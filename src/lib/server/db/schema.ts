@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { check, index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { Difficulty, ENGAGEMENT_MAX, ListChangeKind, RecordStatus } from '../../list.ts'
+import { ENGAGEMENT_MAX, GameDifficulty, ListChangeKind, RecordStatus } from '../../list.ts'
 import { user } from './auth.schema.ts'
 
 // Values of a string enum as the non-empty tuple Drizzle expects
@@ -14,14 +14,31 @@ function enumValues<T extends string>(values: Record<string, T>): [T, ...T[]] {
     return [first, ...rest]
 }
 
-const difficulties = enumValues(Difficulty)
-
 const createdAt = () =>
     integer('created_at', { mode: 'timestamp_ms' })
         .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
         .notNull()
 
 // Players are the user accounts (user table from Better Auth)
+
+// Our own difficulty meter, managed by the admins
+export const difficulty = sqliteTable(
+    'difficulty',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        name: text('name').notNull().unique(),
+        // Media key of the uploaded face
+        face: text('face').notNull(),
+        // Place on the meter starting from 1, the easiest. Not unique, so difficulties can be
+        // shifted one by one inside a transaction
+        position: integer('position').notNull(),
+        createdAt: createdAt(),
+    },
+    (table) => [
+        index('difficulty_position_idx').on(table.position),
+        check('difficulty_position_check', sql`${table.position} >= 1`),
+    ],
+)
 
 export const level = sqliteTable(
     'level',
@@ -37,9 +54,11 @@ export const level = sqliteTable(
         videoUrl: text('video_url'),
         // Media key of the uploaded preview
         preview: text('preview'),
-        gameDifficulty: text('game_difficulty', { enum: difficulties }).notNull(),
-        // Our own difficulty, null while it's not decided yet
-        listDifficulty: text('list_difficulty', { enum: difficulties }),
+        gameDifficulty: text('game_difficulty', { enum: enumValues(GameDifficulty) }).notNull(),
+        // Our own difficulty, null is N/A (not decided yet, or its difficulty was deleted)
+        listDifficultyId: integer('list_difficulty_id').references(() => difficulty.id, {
+            onDelete: 'set null',
+        }),
         // Place on the Main List starting from 1, null means the level is on the Future List.
         // Not unique, so levels can be shifted one by one inside a transaction
         position: integer('position'),
@@ -49,6 +68,7 @@ export const level = sqliteTable(
     (table) => [
         index('level_position_idx').on(table.position),
         index('level_verifierId_idx').on(table.verifierId),
+        index('level_listDifficultyId_idx').on(table.listDifficultyId),
         check('level_position_check', sql`${table.position} is null or ${table.position} >= 1`),
         check(
             'level_verificationProgress_check',

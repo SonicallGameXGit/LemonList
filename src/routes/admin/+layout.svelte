@@ -13,6 +13,7 @@
             badge: data.user === null ? 0 : data.user.pendingRecords,
         },
         { href: resolve('/admin/players'), label: 'Players', badge: 0 },
+        { href: resolve('/admin/difficulties'), label: 'Difficulties', badge: 0 },
         { href: resolve('/admin/levels/new'), label: 'Add level', badge: 0 },
     ])
 </script>

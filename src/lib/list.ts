@@ -1,6 +1,14 @@
 // Shared shapes of the demon list data, used by both the server loads and the UI
 
-export enum Difficulty {
+// Original rating of the game, from N/A (not rated) up. Levels below Easy Demon are underrates
+export enum GameDifficulty {
+    NA = 'na',
+    Auto = 'auto',
+    Easy = 'easy',
+    Normal = 'normal',
+    Hard = 'hard',
+    Harder = 'harder',
+    Insane = 'insane',
     EasyDemon = 'easy-demon',
     MediumDemon = 'medium-demon',
     HardDemon = 'hard-demon',
@@ -8,12 +16,36 @@ export enum Difficulty {
     ExtremeDemon = 'extreme-demon',
 }
 
-export const difficultyNames: Record<Difficulty, string> = {
-    [Difficulty.EasyDemon]: 'Easy Demon',
-    [Difficulty.MediumDemon]: 'Medium Demon',
-    [Difficulty.HardDemon]: 'Hard Demon',
-    [Difficulty.InsaneDemon]: 'Insane Demon',
-    [Difficulty.ExtremeDemon]: 'Extreme Demon',
+export const gameDifficultyNames: Record<GameDifficulty, string> = {
+    [GameDifficulty.NA]: 'N/A',
+    [GameDifficulty.Auto]: 'Auto',
+    [GameDifficulty.Easy]: 'Easy',
+    [GameDifficulty.Normal]: 'Normal',
+    [GameDifficulty.Hard]: 'Hard',
+    [GameDifficulty.Harder]: 'Harder',
+    [GameDifficulty.Insane]: 'Insane',
+    [GameDifficulty.EasyDemon]: 'Easy Demon',
+    [GameDifficulty.MediumDemon]: 'Medium Demon',
+    [GameDifficulty.HardDemon]: 'Hard Demon',
+    [GameDifficulty.InsaneDemon]: 'Insane Demon',
+    [GameDifficulty.ExtremeDemon]: 'Extreme Demon',
+}
+
+// What a difficulty face shows, for both the game rating and our own meter
+export type DifficultyRef = {
+    name: string
+    faceUrl: string
+}
+
+// A difficulty of our own meter, the admins manage them on /admin/difficulties
+export type ListDifficulty = DifficultyRef & {
+    id: number
+}
+
+// A difficulty as the admins see it, position 1 is the easiest
+export type AdminDifficulty = ListDifficulty & {
+    position: number
+    levelsCount: number
 }
 
 export enum RecordStatus {
@@ -50,9 +82,9 @@ export type Level = LevelRef & {
     // Best progress of the verifier, 100 once the level is verified
     verificationProgress: number
     videoUrl: string | null
-    gameDifficulty: Difficulty
-    // Our own difficulty, null while it's not decided yet
-    listDifficulty: Difficulty | null
+    gameDifficulty: GameDifficulty
+    // Our own difficulty, null is N/A (not decided yet)
+    listDifficulty: ListDifficulty | null
     // Average engagement rating from 1 to 10, null if nobody rated it yet
     engagement: number | null
     ratingsCount: number
@@ -115,8 +147,9 @@ export type LevelDraft = {
     videoUrl: string | null
     thumbnailUrl: string
     hasPreview: boolean
-    gameDifficulty: Difficulty
-    listDifficulty: Difficulty | null
+    gameDifficulty: GameDifficulty
+    // Null is N/A
+    listDifficultyId: number | null
     position: number | null
 }
 

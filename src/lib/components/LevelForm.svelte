@@ -1,14 +1,20 @@
 <script lang="ts">
     import type { Snippet } from 'svelte'
     import { enhance } from '$app/forms'
-    import { difficultyFilterSprite, difficultySprite } from '#lib/gd.ts'
+    import { resolve } from '$app/paths'
+    import { gameDifficultyRef, naDifficultyRef } from '#lib/gd.ts'
     import {
         CREATOR_MAX_LENGTH,
         GD_ID_MAX,
         LEVEL_NAME_MAX_LENGTH,
         URL_MAX_LENGTH,
     } from '#lib/list-rules.ts'
-    import { Difficulty, difficultyNames, type LevelDraft } from '#lib/list.ts'
+    import {
+        GameDifficulty,
+        type DifficultyRef,
+        type LevelDraft,
+        type ListDifficulty,
+    } from '#lib/list.ts'
     import Alert from './Alert.svelte'
     import GdButton from './GdButton.svelte'
 
@@ -18,6 +24,8 @@
         action: string
         // Usernames for the verifier suggestions
         players: string[]
+        // Our own meter, from the easiest
+        difficulties: ListDifficulty[]
         mainListSize: number
         error: string | null
         submitLabel: string
@@ -25,7 +33,24 @@
         actions?: Snippet
     }
 
-    let { level, action, players, mainListSize, error, submitLabel, actions }: Props = $props()
+    let { level, action, players, difficulties, mainListSize, error, submitLabel, actions }: Props =
+        $props()
+
+    type DifficultyOption = {
+        value: string
+        difficulty: DifficultyRef
+    }
+
+    const gameOptions: DifficultyOption[] = Object.values(GameDifficulty).map((difficulty) => ({
+        value: difficulty,
+        difficulty: gameDifficultyRef(difficulty),
+    }))
+
+    // N/A first, it's the empty value
+    const listOptions: DifficultyOption[] = $derived([
+        { value: '', difficulty: naDifficultyRef() },
+        ...difficulties.map((difficulty) => ({ value: String(difficulty.id), difficulty })),
+    ])
 
     let saving = $state(false)
 
@@ -98,8 +123,22 @@
         </label>
     </div>
 
-    {@render difficultyPicker('In-game difficulty', 'gameDifficulty', false)}
-    {@render difficultyPicker('LemonList difficulty', 'listDifficulty', true)}
+    {@render difficultyPicker(
+        'In-game difficulty',
+        'gameDifficulty',
+        gameOptions,
+        level === null ? null : level.gameDifficulty,
+    )}
+    {@render difficultyPicker(
+        'LemonList difficulty',
+        'listDifficulty',
+        listOptions,
+        level === null || level.listDifficultyId === null ? '' : String(level.listDifficultyId),
+    )}
+    <p class="-mt-4 text-center text-base text-ink-200">
+        {difficulties.length === 0 ? 'There are no LemonList difficulties yet, ' : 'Missing one? '}
+        <a href={resolve('/admin/difficulties')} class="gd-gold">manage the difficulties</a>.
+    </p>
 
     <div class="grid gap-5 sm:grid-cols-2">
         <label class="gd-label">
@@ -192,43 +231,35 @@
 </form>
 
 <!-- Like the difficulty filter of the search screen, the chosen face is lit -->
-{#snippet difficultyPicker(label: string, name: string, optional: boolean)}
-    {@const current = name === 'gameDifficulty' ? level?.gameDifficulty : level?.listDifficulty}
+{#snippet difficultyPicker(
+    label: string,
+    name: string,
+    options: DifficultyOption[],
+    current: string | null,
+)}
     <fieldset>
         <legend class="mb-2 gd-title text-lg">{label}</legend>
-        <div class="flex flex-wrap justify-center gap-3 sm:gap-5">
-            {#if optional}
+        <div class="flex flex-wrap justify-center gap-x-2 gap-y-3 sm:gap-x-3">
+            {#each options as option (option.value)}
                 <label
                     class="flex w-20 cursor-pointer flex-col items-center gap-1 brightness-50 transition-[filter] hover:brightness-75 has-checked:brightness-100 has-focus-visible:brightness-100 sm:w-24"
-                    title="Not decided yet"
+                    title={option.difficulty.name}
                 >
                     <input
                         type="radio"
                         {name}
-                        value=""
+                        value={option.value}
                         class="sr-only"
-                        checked={current === null || current === undefined}
+                        required
+                        checked={current === option.value}
                     />
-                    <img src={difficultySprite(null)} alt="" class="h-16 w-auto sm:h-20" />
-                    <span class="gd-title text-sm">Not decided</span>
-                </label>
-            {/if}
-            {#each Object.values(Difficulty) as option (option)}
-                <label
-                    class="flex w-20 cursor-pointer flex-col items-center gap-1 brightness-50 transition-[filter] hover:brightness-75 has-checked:brightness-100 has-focus-visible:brightness-100 sm:w-24"
-                    title={difficultyNames[option]}
-                >
-                    <input
-                        type="radio"
-                        {name}
-                        value={option}
-                        class="sr-only"
-                        required={!optional}
-                        checked={current === option}
+                    <img
+                        src={option.difficulty.faceUrl}
+                        alt=""
+                        class="size-14 object-contain sm:size-16"
                     />
-                    <img src={difficultyFilterSprite(option)} alt="" class="w-full" />
-                    <span class="gd-title text-sm"
-                        >{difficultyNames[option].replace(' Demon', '')}</span
+                    <span class="text-center gd-title text-sm leading-tight"
+                        >{option.difficulty.name}</span
                     >
                 </label>
             {/each}

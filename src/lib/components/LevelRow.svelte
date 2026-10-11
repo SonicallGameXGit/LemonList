@@ -1,8 +1,8 @@
 <script lang="ts">
     import { resolve } from '$app/paths'
-    import { difficultyNames, type Level } from '#lib/list.ts'
+    import type { Level } from '#lib/list.ts'
     import { formatEngagement, formatPoints } from '#lib/format.ts'
-    import { sprite } from '#lib/gd.ts'
+    import { levelDifficultyRef, sprite } from '#lib/gd.ts'
     import DifficultyFace from './DifficultyFace.svelte'
     import GdButton from './GdButton.svelte'
     import ProgressBar from './ProgressBar.svelte'
@@ -20,7 +20,7 @@
     let { level, compact = false, move }: Props = $props()
 
     const href = $derived(resolve('/levels/[id]', { id: String(level.id) }))
-    const difficulty = $derived(level.listDifficulty ?? level.gameDifficulty)
+    const difficulty = $derived(levelDifficultyRef(level))
 </script>
 
 <li>
@@ -75,7 +75,7 @@
                     <span class="gd-title text-lg">{level.verificationProgress}%</span>
                 </div>
             {:else if !compact}
-                <p class="truncate gd-title text-lg text-gd-blue">{difficultyNames[difficulty]}</p>
+                <p class="truncate gd-title text-lg text-gd-blue">{difficulty.name}</p>
                 <p class="flex flex-wrap items-center gap-x-5 gap-y-1 gd-title text-lg">
                     <span class="flex items-center gap-2" title="List points">
                         <Sprite name="star" class="h-6" />
