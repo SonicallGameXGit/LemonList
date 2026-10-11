@@ -1,5 +1,10 @@
 <script lang="ts">
+    import { enhance } from '$app/forms'
     import { resolve } from '$app/paths'
+    import { page } from '$app/state'
+    import { sprite } from '#lib/gd.ts'
+    import { NOTES_MAX_LENGTH, URL_MAX_LENGTH } from '#lib/list-rules.ts'
+    import { RecordStatus } from '#lib/list.ts'
     import { formatDate, formatPoints } from '#lib/format.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
@@ -9,15 +14,12 @@
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
-    let { data }: PageProps = $props()
+    let { data, form }: PageProps = $props()
 
-    let submitNotice = $state(false)
+    // Level pages link here with ?level=<id> to choose the level right away
+    const chosenLevel = $derived(page.url.searchParams.get('level') ?? '')
 
-    function submitRecord(event: SubmitEvent) {
-        event.preventDefault()
-        // Placeholder until record submissions are stored
-        submitNotice = true
-    }
+    let submitting = $state(false)
 </script>
 
 <svelte:head>
@@ -81,13 +83,30 @@
     <div class="mt-14 grid gap-14 lg:grid-cols-[26rem_1fr]">
         <section>
             <h2 class="mb-5 text-center gd-title text-4xl">Submit a record</h2>
-            <form class="gd-box flex flex-col gap-5 px-3 py-3" onsubmit={submitRecord}>
+            <form
+                method="POST"
+                action="?/submit"
+                class="gd-box flex flex-col gap-5 px-3 py-3"
+                use:enhance={() => {
+                    submitting = true
+
+                    return async ({ update }) => {
+                        await update()
+                        submitting = false
+                    }
+                }}
+            >
                 <label class="gd-label">
                     Level
                     <select class="gd-input" name="level" required>
-                        <option value="" disabled selected>Choose a level</option>
+                        <option value="" disabled selected={chosenLevel === ''}>
+                            Choose a level
+                        </option>
                         {#each data.levels as level (level.id)}
-                            <option value={level.id}>#{level.position} {level.name}</option>
+                            <option value={level.id} selected={chosenLevel === String(level.id)}>
+                                #{level.position}
+                                {level.name}
+                            </option>
                         {/each}
                     </select>
                 </label>
@@ -110,32 +129,48 @@
                         class="gd-input"
                         name="video"
                         placeholder="https://youtube.com/..."
+                        maxlength={URL_MAX_LENGTH}
                         required
                     />
                 </label>
                 <label class="gd-label">
                     Raw footage (optional)
-                    <input type="url" class="gd-input" name="raw" placeholder="https://..." />
+                    <input
+                        type="url"
+                        class="gd-input"
+                        name="raw"
+                        placeholder="https://..."
+                        maxlength={URL_MAX_LENGTH}
+                    />
                 </label>
                 <label class="gd-label">
                     Notes (optional)
                     <textarea
                         class="gd-input min-h-24 resize-y"
                         name="notes"
+                        maxlength={NOTES_MAX_LENGTH}
                         placeholder="Anything the admins should know?"></textarea>
                 </label>
 
-                {#if submitNotice}
-                    <Alert kind="info">Record submissions are coming soon.</Alert>
+                {#if form?.action === 'submit' && form.error !== null}
+                    <Alert kind="error">{form.error}</Alert>
+                {/if}
+                {#if form?.action === 'submit' && form.success !== null}
+                    <Alert kind="success">{form.success}</Alert>
                 {/if}
 
-                <GdButton type="submit" class="self-center">Submit</GdButton>
+                <GdButton type="submit" class="self-center" disabled={submitting}>Submit</GdButton>
             </form>
         </section>
 
         <div class="flex min-w-0 flex-col gap-14">
             <section>
                 <h2 class="text-center gd-title text-4xl">Your submissions</h2>
+                {#if form?.action === 'withdraw' && form.error !== null}
+                    <div class="mt-5">
+                        <Alert kind="error">{form.error}</Alert>
+                    </div>
+                {/if}
                 {#if data.submissions.length === 0}
                     <div class="gd-dark mt-5 p-8 text-center text-ink-200">No submissions yet.</div>
                 {:else}
@@ -161,6 +196,21 @@
                                 <span class="w-36 text-right">
                                     <RecordStatusBadge status={record.status} />
                                 </span>
+                                <div class="w-10 shrink-0">
+                                    {#if record.status === RecordStatus.Pending}
+                                        <form method="POST" action="?/withdraw" use:enhance>
+                                            <input type="hidden" name="record" value={record.id} />
+                                            <button
+                                                type="submit"
+                                                class="gd-press"
+                                                title="Withdraw"
+                                                aria-label="Withdraw the record"
+                                            >
+                                                <img src={sprite('x')} alt="" class="h-10" />
+                                            </button>
+                                        </form>
+                                    {/if}
+                                </div>
                             </li>
                         {/each}
                     </GdList>
@@ -172,6 +222,11 @@
                 <p class="mt-2 mb-5 text-center text-ink-200">
                     You beat these levels, tell everyone how engaging they were.
                 </p>
+                {#if data.levelsToRate.length === 0}
+                    <div class="gd-dark p-8 text-center text-ink-200">
+                        Nothing to rate right now. Beat a level to rate it!
+                    </div>
+                {/if}
                 <div class="grid grid-cols-2 gap-5 sm:grid-cols-3">
                     {#each data.levelsToRate as level (level.id)}
                         <a

@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { enhance } from '$app/forms'
     import { goto, refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
     import { authClient, errorMessage } from '#lib/auth-client.ts'
@@ -15,7 +16,7 @@
     import type { Snippet } from 'svelte'
     import type { PageProps } from './$types'
 
-    let { data }: PageProps = $props()
+    let { data, form }: PageProps = $props()
 
     type FormState = { pending: boolean; error: string | null; success: string | null }
 
@@ -137,13 +138,7 @@
         }
     }
 
-    // Placeholder until avatar uploads are implemented
-    let avatarNotice = $state(false)
-
-    function uploadAvatar(event: SubmitEvent) {
-        event.preventDefault()
-        avatarNotice = true
-    }
+    let uploading = $state(false)
 </script>
 
 <svelte:head>
@@ -177,7 +172,20 @@
 
 {#snippet profile()}
     {#if data.user !== null}
-        <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={uploadAvatar}>
+        <form
+            method="POST"
+            action="?/avatar"
+            enctype="multipart/form-data"
+            class="gd-dark flex flex-col gap-5 p-6"
+            use:enhance={() => {
+                uploading = true
+
+                return async ({ update }) => {
+                    await update()
+                    uploading = false
+                }
+            }}
+        >
             <div class="flex items-center gap-5">
                 <Avatar
                     src={data.user.avatarUrl}
@@ -199,11 +207,30 @@
                 </label>
             </div>
 
-            {#if avatarNotice}
-                <Alert kind="info">Avatar uploads are coming soon.</Alert>
+            {#if form?.action === 'avatar' && form.error !== null}
+                <Alert kind="error">{form.error}</Alert>
+            {/if}
+            {#if form?.action === 'avatar' && form.success !== null}
+                <Alert kind="success">{form.success}</Alert>
             {/if}
 
-            <GdButton type="submit" color="cyan" size="sm" class="self-start">Upload</GdButton>
+            <div class="flex flex-wrap gap-3">
+                <GdButton type="submit" color="cyan" size="sm" disabled={uploading}>
+                    {uploading ? 'Uploading...' : 'Upload'}
+                </GdButton>
+                {#if data.user.hasAvatar}
+                    <GdButton
+                        type="submit"
+                        formaction="?/removeAvatar"
+                        formnovalidate
+                        color="gray"
+                        size="sm"
+                        disabled={uploading}
+                    >
+                        Remove
+                    </GdButton>
+                {/if}
+            </div>
         </form>
 
         <form class="gd-dark flex flex-col gap-5 p-6" onsubmit={changeUsername}>

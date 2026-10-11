@@ -1,9 +1,10 @@
 import { createAuthClient } from 'better-auth/svelte'
-import { usernameClient } from 'better-auth/client/plugins'
+import { adminClient, usernameClient } from 'better-auth/client/plugins'
 
 // All auth requests go through /api/auth so Better Auth's rate limiting and origin checks apply
 export const authClient = createAuthClient({
-    plugins: [usernameClient()],
+    // The admin plugin checks the role on the server, the client only sends the requests
+    plugins: [usernameClient(), adminClient()],
 })
 
 export function errorMessage(error: { message?: string; statusText?: string } | null) {

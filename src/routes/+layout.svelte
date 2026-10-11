@@ -13,11 +13,16 @@
 
     let menuOpen = $state(false)
 
-    const links = [
-        { href: resolve('/levels'), label: 'Main List' },
-        { href: resolve('/levels/future'), label: 'Future List' },
-        { href: resolve('/players'), label: 'Players' },
-    ]
+    type NavLink = { href: string; label: string; badge: number }
+
+    const links: NavLink[] = $derived([
+        { href: resolve('/levels'), label: 'Main List', badge: 0 },
+        { href: resolve('/levels/future'), label: 'Future List', badge: 0 },
+        { href: resolve('/players'), label: 'Players', badge: 0 },
+        ...(data.user !== null && data.user.admin
+            ? [{ href: resolve('/admin'), label: 'Admin', badge: data.user.pendingRecords }]
+            : []),
+    ])
 
     function isActive(href: string) {
         const path = page.url.pathname
@@ -42,6 +47,17 @@
     }
 </script>
 
+{#snippet badge(link: NavLink)}
+    {#if link.badge > 0}
+        <span
+            class="ml-1 inline-grid min-w-7 place-items-center rounded-full border-2 border-black bg-gd-red px-1.5 align-middle text-base"
+            title="{link.badge} records to review"
+        >
+            {link.badge}
+        </span>
+    {/if}
+{/snippet}
+
 <svelte:head>
     <link rel="icon" href={asset('gd/cube-lemon.png')} />
     <link
@@ -64,6 +80,7 @@
 
             <div class="hidden items-center gap-7 lg:flex">
                 {#each links as link (link.href)}
+                    <!-- eslint-disable svelte/no-navigation-without-resolve -- links are resolved above -->
                     <a
                         href={link.href}
                         class={[
@@ -73,7 +90,9 @@
                         aria-current={isActive(link.href) ? 'page' : undefined}
                     >
                         {link.label}
+                        {@render badge(link)}
                     </a>
+                    <!-- eslint-enable svelte/no-navigation-without-resolve -->
                 {/each}
             </div>
 
@@ -111,13 +130,16 @@
             <div class="gd-box mx-4 mb-4 lg:hidden">
                 <div class="flex flex-col gap-4 px-2 py-2">
                     {#each links as link (link.href)}
+                        <!-- eslint-disable svelte/no-navigation-without-resolve -- links are resolved above -->
                         <a
                             href={link.href}
                             class={['gd-title text-2xl', isActive(link.href) && 'text-gd-yellow']}
                             onclick={closeMenu}
                         >
                             {link.label}
+                            {@render badge(link)}
                         </a>
+                        <!-- eslint-enable svelte/no-navigation-without-resolve -->
                     {/each}
                     <div class="mt-2 flex flex-wrap items-center gap-3">
                         {#if data.user === null}

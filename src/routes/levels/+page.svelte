@@ -1,6 +1,12 @@
 <script lang="ts">
-    import { Difficulty, difficultyNames } from '#lib/list.ts'
+    import { deserialize } from '$app/forms'
+    import { refreshAll } from '$app/navigation'
+    import { resolve } from '$app/paths'
+    import { Difficulty, difficultyNames, type Level } from '#lib/list.ts'
     import { difficultyFilterSprite } from '#lib/gd.ts'
+    import { sortable } from '#lib/sortable.ts'
+    import Alert from '#lib/components/Alert.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import LevelRow from '#lib/components/LevelRow.svelte'
     import ListLegend from '#lib/components/ListLegend.svelte'
@@ -14,10 +20,18 @@
     // Like the difficulty filter of the search screen, no selection shows everything
     let difficulty: Difficulty | null = $state(null)
 
+    // Moves show up right away, the next load brings the real order back
+    let ordered: Level[] = $derived(data.levels)
+    let moving = $state(false)
+    let moveError: string | null = $state(null)
+
+    const admin = $derived(data.user !== null && data.user.admin)
+    const filtered = $derived(query.trim() !== '' || difficulty !== null)
+
     const levels = $derived.by(() => {
         const search = query.trim().toLowerCase()
 
-        return data.levels.filter(
+        return ordered.filter(
             (level) =>
                 (difficulty === null || level.listDifficulty === difficulty) &&
                 (search === '' ||
@@ -29,6 +43,59 @@
     function toggleDifficulty(option: Difficulty) {
         difficulty = difficulty === option ? null : option
     }
+
+    async function move(level: Level, position: number) {
+        if (moving || level.position === null || position < 1 || position > ordered.length) {
+            return
+        }
+
+        const from = ordered.indexOf(level)
+        const reordered = ordered.filter((other) => other !== level)
+        reordered.splice(position - 1, 0, level)
+
+        if (from === -1 || from === position - 1) {
+            return
+        }
+
+        ordered = reordered.map((other, index) => ({ ...other, position: index + 1 }))
+        moving = true
+        moveError = null
+
+        const body = new FormData()
+        body.set('level', String(level.id))
+        body.set('position', String(position))
+
+        try {
+            const response = await fetch('?/move', {
+                method: 'POST',
+                body,
+                headers: { 'x-sveltekit-action': 'true' },
+            })
+            const result = deserialize(await response.text())
+
+            if (result.type === 'failure') {
+                const error = result.data?.error
+                moveError = typeof error === 'string' ? error : "Couldn't move the level"
+            } else if (result.type === 'error') {
+                moveError = "Couldn't move the level"
+            }
+        } catch {
+            moveError = "Couldn't reach the server"
+        }
+
+        await refreshAll()
+        moving = false
+    }
+
+    // Indexes of the whole list, sorting is off while it's filtered
+    function sorted(from: number, to: number) {
+        const level = ordered[from]
+        const target = ordered[to]
+
+        if (level !== undefined && target !== undefined && target.position !== null) {
+            move(level, target.position)
+        }
+    }
 </script>
 
 <svelte:head>
@@ -36,6 +103,24 @@
 </svelte:head>
 
 <PageTitle title="Main List" subtitle="Verified demons, from the hardest down to the Easy ones." />
+
+{#if admin}
+    <div
+        class="gd-dark mb-4 flex flex-col items-center gap-4 p-5 text-center sm:flex-row sm:text-left"
+    >
+        <p class="flex-1">
+            {filtered
+                ? 'Clear the search and the difficulty filter to move levels.'
+                : 'Drag levels by the arrows on the left to move them, or focus the arrows and use the arrow keys.'}
+        </p>
+        <GdButton href={resolve('/admin/levels/new')} size="sm">Add level</GdButton>
+    </div>
+    {#if moveError !== null}
+        <div class="mb-4">
+            <Alert kind="error">{moveError}</Alert>
+        </div>
+    {/if}
+{/if}
 
 <div class="gd-dark mb-4 flex flex-col gap-5 p-5">
     <label class="flex items-center gap-3">
@@ -74,9 +159,16 @@
         <p class="mt-2 text-ink-200">Try another name or difficulty.</p>
     </div>
 {:else}
-    <GdList>
+    <GdList
+        attach={admin
+            ? sortable({ handle: '.drag-handle', disabled: filtered || moving, onsort: sorted })
+            : undefined}
+    >
         {#each levels as level (level.id)}
-            <LevelRow {level} />
+            <LevelRow
+                {level}
+                move={admin && !filtered ? (position) => move(level, position) : undefined}
+            />
         {/each}
     </GdList>
 {/if}

@@ -17,6 +17,7 @@
         "db:migrate": "drizzle-kit migrate",
         "db:studio": "drizzle-kit studio",
         "db:seed": "tsx --env-file=.env scripts/seed.ts",
+        "admin": "tsx --env-file=.env scripts/admin.ts",
         "auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
     },
     "devDependencies": {
@@ -28,6 +29,7 @@
         "@types/better-sqlite3": "^9.6.0",
         "@types/node": "^22",
         "@types/nodemailer": "^8.0.2",
+        "@types/sortablejs": "^1.15.9",
         "auth": "^1.6.24",
         "better-auth": "^1.6.24",
         "drizzle-kit": "^0.31.10",
@@ -54,6 +56,8 @@
     "dependencies": {
         "better-sqlite3": "^13.0.2",
         "nodemailer": "^10.0.16",
-        "sharp": "^0.35.5"
+        "sharp": "^0.35.5",
+        "sortablejs": "^1.15.7",
+        "valibot": "^1.5.0"
     }
 }

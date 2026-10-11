@@ -1,17 +1,23 @@
 <script lang="ts">
     import type { Snippet } from 'svelte'
+    import type { Attachment } from 'svelte/attachments'
 
     type Props = {
         variant?: 'levels' | 'comments'
+        // Attached to the <ol> holding the rows, e.g. for drag and drop sorting
+        attach?: Attachment<HTMLOListElement>
         children: Snippet
     }
 
     // Brown list with the green frame from the online levels screen
-    let { variant = 'levels', children }: Props = $props()
+    let { variant = 'levels', attach, children }: Props = $props()
 </script>
 
 <div class="relative mx-3.5 mt-6 mb-5">
-    <ol class={['bg-gd-list pt-2 pb-3.5', variant === 'levels' ? 'gd-list' : 'gd-comments']}>
+    <ol
+        class={['bg-gd-list pt-2 pb-3.5', variant === 'levels' ? 'gd-list' : 'gd-comments']}
+        {@attach attach}
+    >
         {@render children()}
     </ol>
     <div

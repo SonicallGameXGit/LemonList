@@ -1,5 +1,18 @@
+import * as v from 'valibot'
+import { NOTES_MAX_LENGTH } from '#lib/list-rules.ts'
+import { requireUser } from '#lib/server/access.ts'
+import {
+    attempt,
+    id,
+    optionalText,
+    optionalUrl,
+    parseForm,
+    requiredInteger,
+    requiredUrl,
+} from '#lib/server/forms.ts'
+import { submitRecord, withdrawRecord } from '#lib/server/list-actions.ts'
 import { getLevelsToRate, getMainList, getPlayerProfile, getSubmissions } from '#lib/server/list.ts'
-import type { PageServerLoad } from './$types'
+import type { Actions, PageServerLoad } from './$types'
 
 export const load: PageServerLoad = ({ locals }) => {
     const user = locals.user
@@ -28,3 +41,49 @@ export const load: PageServerLoad = ({ locals }) => {
         levelsToRate: getLevelsToRate(user.id),
     }
 }
+
+const recordSchema = v.object({
+    level: requiredInteger('Level', 1, Number.MAX_SAFE_INTEGER),
+    progress: requiredInteger('Progress', 1, 100),
+    video: requiredUrl('Video link'),
+    raw: optionalUrl('Raw footage link'),
+    notes: optionalText('Notes', NOTES_MAX_LENGTH),
+})
+
+export const actions = {
+    submit: async ({ locals, request }) => {
+        const user = requireUser(locals)
+        const parsed = parseForm('submit', await request.formData(), recordSchema)
+
+        if (parsed.failure !== null) {
+            return parsed.failure
+        }
+
+        const input = parsed.data
+
+        return attempt(
+            'submit',
+            () =>
+                submitRecord(user.id, {
+                    levelId: input.level,
+                    progress: input.progress,
+                    videoUrl: input.video,
+                    rawFootageUrl: input.raw,
+                    notes: input.notes,
+                }),
+            'Record submitted! An admin will review it soon.',
+        )
+    },
+    withdraw: async ({ locals, request }) => {
+        const user = requireUser(locals)
+        const parsed = parseForm('withdraw', await request.formData(), v.object({ record: id() }))
+
+        if (parsed.failure !== null) {
+            return parsed.failure
+        }
+
+        const recordId = parsed.data.record
+
+        return attempt('withdraw', () => withdrawRecord(user.id, recordId))
+    },
+} satisfies Actions

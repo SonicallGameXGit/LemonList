@@ -71,6 +71,55 @@ export type LevelRecord = {
     status: RecordStatus
 }
 
+// A submission with everything the admins need to review it
+export type ReviewRecord = LevelRecord & {
+    rawFootageUrl: string | null
+    notes: string | null
+    playerId: string
+    accountVerified: boolean
+}
+
+// Tabs of the admin players page
+export enum PlayerFilter {
+    Unverified = 'unverified',
+    All = 'all',
+    Admins = 'admins',
+    Banned = 'banned',
+}
+
+// An account as the admins see it, including the ones hidden from the list
+export type AdminPlayer = {
+    id: string
+    username: string | null
+    displayUsername: string
+    email: string
+    avatarUrl: string
+    hasAvatar: boolean
+    emailVerified: boolean
+    accountVerified: boolean
+    admin: boolean
+    banned: boolean
+    banReason: string | null
+    createdAt: Date
+}
+
+// Stored fields of a level for the admin form
+export type LevelDraft = {
+    id: number
+    gdId: number
+    name: string
+    creator: string
+    // Username of the verifier
+    verifier: string | null
+    verificationProgress: number
+    videoUrl: string | null
+    thumbnailUrl: string
+    hasPreview: boolean
+    gameDifficulty: Difficulty
+    listDifficulty: Difficulty | null
+    position: number | null
+}
+
 export type LeaderboardEntry = {
     rank: number
     player: PlayerRef

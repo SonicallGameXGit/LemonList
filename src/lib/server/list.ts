@@ -10,20 +10,26 @@ import {
     isNotNull,
     isNull,
     or,
+    sql,
     type SQL,
 } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
 import { level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
 import { avatarUrl, levelThumbnailUrl } from '#lib/server/media.ts'
+import { isAdminRole } from '#lib/auth-rules.ts'
 import {
     ENGAGEMENT_MAX,
+    PlayerFilter,
     RecordStatus,
+    type AdminPlayer,
     type LeaderboardEntry,
     type Level,
     type LevelRecord,
+    type LevelDraft,
     type LevelRef,
     type ListChange,
     type PlayerRef,
+    type ReviewRecord,
 } from '#lib/list.ts'
 
 // List points of a level at the given position of the Main List
@@ -295,7 +301,7 @@ export function getEngagementDistribution(levelId: number) {
     )
 }
 
-function hasCompleted(levelId: number, playerId: string) {
+export function hasCompleted(levelId: number, playerId: string) {
     const row = db
         .select({ id: record.id })
         .from(record)
@@ -530,4 +536,203 @@ export function getListStats() {
         players: players?.count ?? 0,
         records: records?.count ?? 0,
     }
+}
+
+// Best approved progress of the player on the level, 0 without records
+export function getBestProgress(levelId: number, playerId: string) {
+    const row = db
+        .select({ progress: record.progress })
+        .from(record)
+        .where(
+            and(
+                eq(record.levelId, levelId),
+                eq(record.playerId, playerId),
+                eq(record.status, RecordStatus.Approved),
+            ),
+        )
+        .orderBy(desc(record.progress))
+        .get()
+
+    return row === undefined ? 0 : row.progress
+}
+
+export function hasPendingRecord(levelId: number, playerId: string) {
+    const row = db
+        .select({ id: record.id })
+        .from(record)
+        .where(
+            and(
+                eq(record.levelId, levelId),
+                eq(record.playerId, playerId),
+                eq(record.status, RecordStatus.Pending),
+            ),
+        )
+        .get()
+
+    return row !== undefined
+}
+
+// Admin tools
+
+export function countPendingRecords() {
+    const row = db
+        .select({ count: count() })
+        .from(record)
+        .innerJoin(user, eq(user.id, record.playerId))
+        .where(and(eq(record.status, RecordStatus.Pending), visiblePlayer()))
+        .get()
+
+    return row?.count ?? 0
+}
+
+// The review queue starts from the oldest submission, the other statuses from the newest
+export function getReviewRecords(status: RecordStatus, limit: number): ReviewRecord[] {
+    return db
+        .select({
+            id: record.id,
+            progress: record.progress,
+            videoUrl: record.videoUrl,
+            rawFootageUrl: record.rawFootageUrl,
+            notes: record.notes,
+            submittedAt: record.submittedAt,
+            status: record.status,
+            playerId: record.playerId,
+            accountVerified: user.accountVerified,
+            level: levelRefColumns,
+            player: playerColumns(user),
+        })
+        .from(record)
+        .innerJoin(level, eq(level.id, record.levelId))
+        .innerJoin(user, eq(user.id, record.playerId))
+        .where(and(eq(record.status, status), visiblePlayer()))
+        .orderBy(
+            status === RecordStatus.Pending ? asc(record.submittedAt) : desc(record.submittedAt),
+        )
+        .limit(limit)
+        .all()
+        .map((row) => ({
+            id: row.id,
+            level: toLevelRef(row.level),
+            player: requirePlayerRef(row.player),
+            progress: row.progress,
+            videoUrl: row.videoUrl,
+            rawFootageUrl: row.rawFootageUrl,
+            notes: row.notes,
+            submittedAt: row.submittedAt,
+            status: row.status,
+            playerId: row.playerId,
+            accountVerified: row.accountVerified,
+        }))
+}
+
+// Every account, including banned ones and the ones without a verified email
+export function getAdminPlayers(filter: PlayerFilter, search: string, limit: number) {
+    const filters: Record<PlayerFilter, SQL | undefined> = {
+        [PlayerFilter.Unverified]: and(
+            eq(user.accountVerified, false),
+            eq(user.emailVerified, true),
+            or(isNull(user.banned), eq(user.banned, false)),
+        ),
+        [PlayerFilter.All]: undefined,
+        [PlayerFilter.Admins]: sql`${user.role} like '%admin%'`,
+        [PlayerFilter.Banned]: eq(user.banned, true),
+    }
+    const pattern = '%' + search.replace(/[\\%_]/g, (char) => '\\' + char) + '%'
+    const matches =
+        search === ''
+            ? undefined
+            : or(
+                  sql`${user.username} like ${pattern} escape '\\'`,
+                  sql`${user.displayUsername} like ${pattern} escape '\\'`,
+                  sql`${user.email} like ${pattern} escape '\\'`,
+              )
+
+    return db
+        .select({
+            id: user.id,
+            username: user.username,
+            displayUsername: user.displayUsername,
+            name: user.name,
+            email: user.email,
+            avatar: user.avatar,
+            emailVerified: user.emailVerified,
+            accountVerified: user.accountVerified,
+            role: user.role,
+            banned: user.banned,
+            banReason: user.banReason,
+            createdAt: user.createdAt,
+        })
+        .from(user)
+        .where(and(filters[filter], matches))
+        .orderBy(desc(user.createdAt))
+        .limit(limit)
+        .all()
+        .filter((row) => filter !== PlayerFilter.Admins || isAdminRole(row.role))
+        .map((row): AdminPlayer => ({
+            id: row.id,
+            username: row.username,
+            displayUsername: row.displayUsername ?? row.username ?? row.name,
+            email: row.email,
+            avatarUrl: avatarUrl(row.avatar),
+            hasAvatar: row.avatar !== null,
+            emailVerified: row.emailVerified,
+            accountVerified: row.accountVerified,
+            admin: isAdminRole(row.role),
+            banned: row.banned === true,
+            banReason: row.banReason,
+            createdAt: row.createdAt,
+        }))
+}
+
+export function getLevelDraft(id: number): LevelDraft | undefined {
+    const row = db
+        .select({
+            ...levelRefColumns,
+            gdId: level.gdId,
+            creator: level.creator,
+            verificationProgress: level.verificationProgress,
+            gameDifficulty: level.gameDifficulty,
+            listDifficulty: level.listDifficulty,
+            verifier: verifier.username,
+        })
+        .from(level)
+        .leftJoin(verifier, eq(verifier.id, level.verifierId))
+        .where(eq(level.id, id))
+        .get()
+
+    if (row === undefined) {
+        return undefined
+    }
+
+    return {
+        id: row.id,
+        gdId: row.gdId,
+        name: row.name,
+        creator: row.creator,
+        verifier: row.verifier,
+        verificationProgress: row.verificationProgress,
+        videoUrl: row.videoUrl,
+        thumbnailUrl: levelThumbnailUrl(row.preview, row.videoUrl),
+        hasPreview: row.preview !== null,
+        gameDifficulty: row.gameDifficulty,
+        listDifficulty: row.listDifficulty,
+        position: row.position,
+    }
+}
+
+// Usernames of the players for the verifier field
+export function getPlayerUsernames() {
+    return db
+        .select({ username: user.username })
+        .from(user)
+        .where(visiblePlayer())
+        .orderBy(asc(user.username))
+        .all()
+        .flatMap((row) => (row.username === null ? [] : [row.username]))
+}
+
+export function getMainListSize() {
+    return (
+        db.select({ count: count() }).from(level).where(isNotNull(level.position)).get()?.count ?? 0
+    )
 }

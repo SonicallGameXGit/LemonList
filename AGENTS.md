@@ -39,7 +39,10 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - Env vars are declared in `src/env.ts` and live in `.env` (see `.env.example`): `DATABASE_URL`, `ORIGIN`, `BETTER_AUTH_SECRET`, `SMTP_URL`, `MAIL_FROM`, `MEDIA_DIR`.
 - UI: a faithful Geometry Dash look (inspired by GDBrowser by GDColon). Textures and sprites in `static/gd` are extracted from the game resources (background, ground, floor line, GJ_button_01-06, GJ_square01, icons, difficulty faces, default cube); Pusab and the list frame come from the GDBrowser archive. Reference them through `sprite()`/`difficultySprite()` in `src/lib/gd.ts`. Design classes live in `src/routes/layout.css` (`gd-title`, `gd-gold`, `gd-box`, `gd-dark`, `gd-light`, `gd-input`, `gd-label`, `gd-press`); use `GdButton` for buttons and `GdList` for framed brown lists. Prefer GD sprites over icon libraries.
 - Data shapes for the list (levels, records, players, difficulties) live in `src/lib/list.ts`; pages get them from `src/lib/server/list.ts` through their `+page.server.ts` loads.
-- Not yet implemented (data and storage exist, only the interactions are missing): admin tools (placing/moving levels, reviewing records, verifying and banning players), avatar and preview uploads, record submission and rating (their forms are UI-only templates).
+- Interactions are form actions (`use:enhance`) validated with **valibot** helpers from `src/lib/server/forms.ts` (every action returns `{ action, error, success }`). Mutations live in `src/lib/server/list-actions.ts` (throw `ActionError` for user-facing errors). Actions must call `requireUser`/`requireAdmin` (`src/lib/server/access.ts`) themselves, layout loads don't protect actions.
+- Admins: `role` contains `admin` (Better Auth admin plugin). Make the first admin with `pnpm admin <username or email>` (`--remove`, `--list`); after that admins manage roles on `/admin/players`. Roles and bans go through `authClient.admin` (bans sign the player out); account verification and avatar removal are form actions. Records of unverified accounts can't be approved.
+- Admin pages under `/admin` (records review, players, add/edit level). Admins reorder the Main List by dragging the arrow handle (SortableJS, `src/lib/sortable.ts`) or with the arrow keys; `placeLevel` shifts the other levels and writes `list_change`.
+- Uploads: production needs `BODY_SIZE_LIMIT=10M` for adapter-node (default 512K), previews can be up to 8 MB.
 
 ## Commands
 
@@ -49,6 +52,7 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
 - `pnpm lint` - prettier check + eslint
 - `pnpm format` - prettier write
 - `pnpm db:seed` - sample data for development (`--reset` replaces all list data)
+- `pnpm admin <username or email>` - make a player an admin (`--remove`, `--list`)
 
 ## Code Style (mandatory)
 

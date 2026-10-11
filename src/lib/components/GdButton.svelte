@@ -12,6 +12,11 @@
         disabled?: boolean
         title?: string
         pressed?: boolean
+        // Submit buttons: another action of the form and the value they send
+        formaction?: string
+        formnovalidate?: boolean
+        name?: string
+        value?: string
         class?: ClassValue
         onclick?: (event: MouseEvent) => void
         children: Snippet
@@ -26,6 +31,10 @@
         disabled = false,
         title,
         pressed,
+        formaction,
+        formnovalidate,
+        name,
+        value,
         class: className,
         onclick,
         children,
@@ -44,7 +53,18 @@
 {/snippet}
 
 {#if href === undefined}
-    <button {type} class={classes} {disabled} {title} aria-pressed={pressed} {onclick}>
+    <button
+        {type}
+        class={classes}
+        {disabled}
+        {title}
+        aria-pressed={pressed}
+        {formaction}
+        {formnovalidate}
+        {name}
+        {value}
+        {onclick}
+    >
         {@render label()}
     </button>
 {:else}

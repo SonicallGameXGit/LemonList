@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { enhance } from '$app/forms'
     import { resolve } from '$app/paths'
     import { sprite } from '#lib/gd.ts'
     import { ENGAGEMENT_MAX, difficultyNames } from '#lib/list.ts'
@@ -12,7 +13,7 @@
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
-    let { data }: PageProps = $props()
+    let { data, form }: PageProps = $props()
 
     const level = $derived(data.level)
     const maxVotes = $derived(Math.max(1, ...data.distribution))
@@ -21,18 +22,12 @@
     let copied = $state(false)
     // Starts from the stored rating of the viewer, clicking a score overrides it
     let selectedRating: number | null = $derived(data.viewerRating.rating)
-    let ratingNotice = $state(false)
+    let rating = $state(false)
 
     async function copyId() {
         await navigator.clipboard.writeText(String(level.gdId))
         copied = true
         setTimeout(() => (copied = false), 1500)
-    }
-
-    function submitRating(event: SubmitEvent) {
-        event.preventDefault()
-        // Placeholder until ratings are stored
-        ratingNotice = true
     }
 </script>
 
@@ -177,6 +172,25 @@
     </p>
 </section>
 
+{#if data.user !== null && (level.position !== null || data.user.admin)}
+    <div class="mt-6 flex flex-wrap justify-center gap-4">
+        {#if level.position !== null}
+            <GdButton href={resolve('/dashboard') + '?level=' + level.id} color="cyan" size="sm">
+                Submit a record
+            </GdButton>
+        {/if}
+        {#if data.user.admin}
+            <GdButton
+                href={resolve('/admin/levels/[id]', { id: String(level.id) })}
+                color="gray"
+                size="sm"
+            >
+                Edit level
+            </GdButton>
+        {/if}
+    </div>
+{/if}
+
 <div class="mt-16 grid gap-14 lg:grid-cols-[1fr_24rem]">
     <section>
         {#if level.position === null}
@@ -275,8 +289,23 @@
                 {#if level.position === null}
                     <p class="text-center">Ratings open after the level is placed.</p>
                 {:else if data.viewerRating.canRate}
-                    <form class="flex flex-col items-center gap-4" onsubmit={submitRating}>
-                        <p class="gd-title text-xl">Rate engagement</p>
+                    <form
+                        method="POST"
+                        action="?/rate"
+                        class="flex flex-col items-center gap-4"
+                        use:enhance={() => {
+                            rating = true
+
+                            return async ({ update }) => {
+                                await update({ reset: false })
+                                rating = false
+                            }
+                        }}
+                    >
+                        <p class="gd-title text-xl">
+                            {data.viewerRating.rating === null ? 'Rate engagement' : 'Your rating'}
+                        </p>
+                        <input type="hidden" name="score" value={selectedRating ?? ''} />
                         <div class="grid grid-cols-5 gap-2">
                             {#each { length: ENGAGEMENT_MAX }, index (index)}
                                 <GdButton
@@ -291,10 +320,20 @@
                                 </GdButton>
                             {/each}
                         </div>
-                        {#if ratingNotice}
-                            <Alert kind="info">Rating levels is coming soon.</Alert>
+                        {#if form?.action === 'rate' && form.error !== null}
+                            <Alert kind="error">{form.error}</Alert>
                         {/if}
-                        <GdButton type="submit" disabled={selectedRating === null}>Submit</GdButton>
+                        {#if form?.action === 'rate' && form.success !== null}
+                            <Alert kind="success">{form.success}</Alert>
+                        {/if}
+                        <GdButton
+                            type="submit"
+                            disabled={selectedRating === null ||
+                                selectedRating === data.viewerRating.rating ||
+                                rating}
+                        >
+                            {data.viewerRating.rating === null ? 'Submit' : 'Change'}
+                        </GdButton>
                     </form>
                 {:else}
                     <p class="text-center">

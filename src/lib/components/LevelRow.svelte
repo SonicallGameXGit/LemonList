@@ -2,13 +2,22 @@
     import { resolve } from '$app/paths'
     import { difficultyNames, type Level } from '#lib/list.ts'
     import { formatEngagement, formatPoints } from '#lib/format.ts'
+    import { sprite } from '#lib/gd.ts'
     import DifficultyFace from './DifficultyFace.svelte'
     import GdButton from './GdButton.svelte'
     import ProgressBar from './ProgressBar.svelte'
     import Sprite from './Sprite.svelte'
 
+    type Props = {
+        level: Level
+        compact?: boolean
+        // Shows the drag handle (admins on the Main List), the arrow keys on it move the level
+        // by one place. Drag and drop itself is done by the list
+        move?: (position: number) => void
+    }
+
     // A cell of the level list, render it inside <GdList>
-    let { level, compact = false }: { level: Level; compact?: boolean } = $props()
+    let { level, compact = false, move }: Props = $props()
 
     const href = $derived(resolve('/levels/[id]', { id: String(level.id) }))
     const difficulty = $derived(level.listDifficulty ?? level.gameDifficulty)
@@ -16,6 +25,26 @@
 
 <li>
     <div class="flex items-center gap-4 px-4 py-4 sm:gap-6 sm:px-6">
+        {#if move !== undefined && level.position !== null}
+            {@const position = level.position}
+            <!-- Up and down arrows, like the move buttons of the editor -->
+            <button
+                type="button"
+                class="drag-handle -mr-1 flex shrink-0 cursor-grab touch-none flex-col items-center active:cursor-grabbing sm:-mr-2"
+                title="Drag to move, or use the arrow keys"
+                aria-label="Move {level.name}, now at #{position}"
+                onkeydown={(event) => {
+                    if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                        event.preventDefault()
+                        move(event.key === 'ArrowUp' ? position - 1 : position + 1)
+                    }
+                }}
+            >
+                <img src={sprite('arrow')} alt="" class="h-7 w-auto rotate-90" draggable="false" />
+                <img src={sprite('arrow')} alt="" class="h-7 w-auto -rotate-90" draggable="false" />
+            </button>
+        {/if}
+
         <div class="flex w-16 shrink-0 flex-col items-center gap-1 sm:w-20">
             <DifficultyFace {difficulty} class="w-full" />
             <span class="gd-title text-xl text-gd-yellow">
