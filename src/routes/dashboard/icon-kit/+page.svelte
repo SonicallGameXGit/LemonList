@@ -17,7 +17,8 @@
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdIcon from '#lib/components/GdIcon.svelte'
-    import type { PageProps } from './$types'
+    import { GD_USERNAME_MAX_LENGTH } from '#lib/list-rules.ts'
+    import type { PageProps, SubmitFunction } from './$types'
 
     let { data, form }: PageProps = $props()
 
@@ -49,6 +50,7 @@
     let manifest: IconManifest | null = $state.raw(null)
     let loadFailed = $state(false)
     let saving = $state(false)
+    let copying = $state(false)
 
     const count = $derived(manifest === null ? 0 : iconCount(manifest, tab))
     const pageCount = $derived(Math.max(1, Math.ceil(count / PAGE_SIZE)))
@@ -92,6 +94,21 @@
     function choose(mode: IconMode) {
         kit.mode = mode
         showMode(mode)
+    }
+
+    // Fills the garage with the kit of a game account, saving it is up to the player
+    const copyFromGame: SubmitFunction = () => {
+        copying = true
+
+        return async ({ result, update }) => {
+            if (result.type === 'success' && result.data !== undefined && 'kit' in result.data) {
+                Object.assign(kit, result.data.kit)
+                showMode(kit.mode)
+            }
+
+            await update({ reset: false })
+            copying = false
+        }
     }
 
     // Pages wrap around, like in the game
@@ -158,6 +175,44 @@
         {/each}
     </ul>
 </section>
+
+<!-- The kit of a game account, from the Geometry Dash servers -->
+<form
+    method="POST"
+    action="?/fromGame"
+    class="gd-box mx-auto mt-10 flex max-w-xl flex-col gap-3 p-4 sm:p-5"
+    use:enhance={copyFromGame}
+>
+    <label for="{uid}-gd-username" class="gd-label">Copy from Geometry Dash</label>
+    <div class="flex flex-wrap gap-3">
+        <input
+            id="{uid}-gd-username"
+            type="text"
+            class="gd-input min-w-0 flex-1"
+            name="gdUsername"
+            required
+            maxlength={GD_USERNAME_MAX_LENGTH}
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Your username in the game"
+            value={data.user === null ? '' : data.user.displayUsername}
+        />
+        <GdButton type="submit" size="sm" color="cyan" disabled={copying || manifest === null}>
+            {copying ? 'Loading...' : 'Auto-Apply'}
+        </GdButton>
+    </div>
+
+    {#if form?.action === 'fromGame' && form.error !== null}
+        <Alert kind="error">{form.error}</Alert>
+    {/if}
+    {#if form?.action === 'fromGame' && form.success !== null}
+        <Alert kind="success">{form.success}</Alert>
+    {/if}
+
+    <p class="text-base text-ink-200">
+        Takes your icons, colors and glow from your game profile. Nothing changes until you save.
+    </p>
+</form>
 
 <!-- Icons of the chosen mode -->
 <section class="mt-10" aria-label="{iconModeNames[tab]} icons">
