@@ -1,13 +1,14 @@
 <script lang="ts">
     import { refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
-    import type { Level } from '#lib/list.ts'
-    import { sendMove } from '#lib/move-level.ts'
+    import type { DifficultyChange, Level } from '#lib/list.ts'
+    import { applyDifficultyChanges, moveDifficultyChanges, sendMove } from '#lib/move-level.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import LevelRow from '#lib/components/LevelRow.svelte'
+    import MoveDialog from '#lib/components/MoveDialog.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
     import type { PageProps } from './$types'
 
@@ -17,11 +18,14 @@
     let ordered: Level[] = $derived(data.levels)
     let moving = $state(false)
     let moveError: string | null = $state(null)
+    // A move that would change difficulties waits for the dialog
+    let pendingMove: { level: Level; place: number; changes: DifficultyChange[] } | null =
+        $state(null)
 
     const admin = $derived(data.user !== null && data.user.admin)
 
-    async function move(level: Level, place: number) {
-        if (moving || place < 1 || place > ordered.length) {
+    function move(level: Level, place: number) {
+        if (moving || pendingMove !== null || place < 1 || place > ordered.length) {
             return
         }
 
@@ -31,15 +35,42 @@
             return
         }
 
-        const reordered = ordered.filter((other) => other !== level)
-        reordered.splice(place - 1, 0, level)
+        const changes = moveDifficultyChanges(ordered, level, place - 1)
+
+        if (changes.length === 0) {
+            send(level, place, [])
+        } else {
+            pendingMove = { level, place, changes }
+        }
+    }
+
+    async function send(level: Level, place: number, changes: DifficultyChange[]) {
+        const updated = applyDifficultyChanges(ordered, changes)
+        const moved = updated[ordered.indexOf(level)]
+
+        if (moved === undefined) {
+            return
+        }
+
+        const reordered = updated.filter((other) => other !== moved)
+        reordered.splice(place - 1, 0, moved)
 
         ordered = reordered.map((other, index) => ({ ...other, futurePosition: index + 1 }))
         moving = true
-        moveError = await sendMove(level.id, place)
+        moveError = await sendMove(level.id, place, changes.length > 0)
 
         await refreshAll()
         moving = false
+    }
+
+    function confirmMove(withDifficulties: boolean) {
+        if (pendingMove === null) {
+            return
+        }
+
+        const { level, place, changes } = pendingMove
+        pendingMove = null
+        send(level, place, withDifficulties ? changes : [])
     }
 
     function sorted(from: number, to: number) {
@@ -85,7 +116,11 @@
 {:else}
     <GdList
         attach={admin
-            ? sortable({ handle: '.drag-handle', disabled: moving, onsort: sorted })
+            ? sortable({
+                  handle: '.drag-handle',
+                  disabled: moving || pendingMove !== null,
+                  onsort: sorted,
+              })
             : undefined}
     >
         {#each ordered as level (level.id)}
@@ -95,3 +130,13 @@
 {/if}
 
 <p class="text-center text-lg text-ink-200">The bar shows the verifier's best progress so far.</p>
+
+{#if pendingMove !== null}
+    <MoveDialog
+        levelName={pendingMove.level.name}
+        place={'place ' + pendingMove.place + ' of the Future List'}
+        changes={pendingMove.changes}
+        onchoose={confirmMove}
+        oncancel={() => (pendingMove = null)}
+    />
+{/if}

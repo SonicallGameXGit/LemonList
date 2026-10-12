@@ -1,15 +1,16 @@
 <script lang="ts">
     import { refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
-    import type { Level } from '#lib/list.ts'
+    import type { DifficultyChange, Level } from '#lib/list.ts'
     import { naDifficultyRef } from '#lib/gd.ts'
-    import { sendMove } from '#lib/move-level.ts'
+    import { applyDifficultyChanges, moveDifficultyChanges, sendMove } from '#lib/move-level.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import LevelRow from '#lib/components/LevelRow.svelte'
     import ListLegend from '#lib/components/ListLegend.svelte'
+    import MoveDialog from '#lib/components/MoveDialog.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -25,6 +26,9 @@
     let ordered: Level[] = $derived(data.levels)
     let moving = $state(false)
     let moveError: string | null = $state(null)
+    // A move that would change difficulties waits for the dialog
+    let pendingMove: { level: Level; position: number; changes: DifficultyChange[] } | null =
+        $state(null)
 
     const admin = $derived(data.user !== null && data.user.admin)
     const filtered = $derived(query.trim() !== '' || difficulty !== null)
@@ -73,25 +77,60 @@
         difficulty = difficulty === option ? null : option
     }
 
-    async function move(level: Level, position: number) {
-        if (moving || level.position === null || position < 1 || position > ordered.length) {
+    function move(level: Level, position: number) {
+        if (
+            moving ||
+            pendingMove !== null ||
+            level.position === null ||
+            position < 1 ||
+            position > ordered.length
+        ) {
             return
         }
 
         const from = ordered.indexOf(level)
-        const reordered = ordered.filter((other) => other !== level)
-        reordered.splice(position - 1, 0, level)
 
         if (from === -1 || from === position - 1) {
             return
         }
 
+        const changes = moveDifficultyChanges(ordered, level, position - 1)
+
+        if (changes.length === 0) {
+            send(level, position, [])
+        } else {
+            pendingMove = { level, position, changes }
+        }
+    }
+
+    async function send(level: Level, position: number, changes: DifficultyChange[]) {
+        const updated = applyDifficultyChanges(ordered, changes)
+        const from = ordered.indexOf(level)
+        const moved = updated[from]
+
+        if (moved === undefined) {
+            return
+        }
+
+        const reordered = updated.filter((other) => other !== moved)
+        reordered.splice(position - 1, 0, moved)
+
         ordered = reordered.map((other, index) => ({ ...other, position: index + 1 }))
         moving = true
-        moveError = await sendMove(level.id, position)
+        moveError = await sendMove(level.id, position, changes.length > 0)
 
         await refreshAll()
         moving = false
+    }
+
+    function confirmMove(withDifficulties: boolean) {
+        if (pendingMove === null) {
+            return
+        }
+
+        const { level, position, changes } = pendingMove
+        pendingMove = null
+        send(level, position, withDifficulties ? changes : [])
     }
 
     // Indexes of the whole list, sorting is off while it's filtered
@@ -179,7 +218,11 @@
 {:else}
     <GdList
         attach={admin
-            ? sortable({ handle: '.drag-handle', disabled: filtered || moving, onsort: sorted })
+            ? sortable({
+                  handle: '.drag-handle',
+                  disabled: filtered || moving || pendingMove !== null,
+                  onsort: sorted,
+              })
             : undefined}
     >
         {#each levels as level (level.id)}
@@ -192,3 +235,13 @@
 {/if}
 
 <ListLegend />
+
+{#if pendingMove !== null}
+    <MoveDialog
+        levelName={pendingMove.level.name}
+        place={'#' + pendingMove.position}
+        changes={pendingMove.changes}
+        onchoose={confirmMove}
+        oncancel={() => (pendingMove = null)}
+    />
+{/if}

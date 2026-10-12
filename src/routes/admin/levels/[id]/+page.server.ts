@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit'
 import { requireAdmin } from '#lib/server/access.ts'
-import { formImage, run } from '#lib/server/forms.ts'
-import { parseLevelForm } from '#lib/server/level-form.ts'
+import { run } from '#lib/server/forms.ts'
+import { formPreview, parseLevelForm } from '#lib/server/level-form.ts'
 import { deleteLevel, updateLevel } from '#lib/server/list-actions.ts'
 import {
     getDifficulties,
@@ -47,9 +47,15 @@ export const actions = {
             return parsed.failure
         }
 
-        const { input, removePreview } = parsed.data
-        const preview = await formImage(formData, 'preview')
-        const saved = await run('save', () => updateLevel(id, input, preview, removePreview))
+        const { input, removePreview, gameThumbnail } = parsed.data
+        const saved = await run('save', async () =>
+            updateLevel(
+                id,
+                input,
+                await formPreview(formData, input.gdId, gameThumbnail),
+                removePreview,
+            ),
+        )
 
         if (saved.failure !== null) {
             return saved.failure

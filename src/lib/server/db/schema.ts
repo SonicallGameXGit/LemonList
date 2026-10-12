@@ -109,6 +109,48 @@ export const record = sqliteTable(
     ],
 )
 
+// Levels players beat that aren't on the list yet. The admins place them (accepting makes the level
+// and a record of the player) or reject them
+export const levelSubmission = sqliteTable(
+    'level_submission',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        playerId: text('player_id')
+            .notNull()
+            .references(() => user.id, { onDelete: 'cascade' }),
+        // Not unique, several players can send the same level
+        gdId: integer('gd_id').notNull(),
+        name: text('name').notNull(),
+        creator: text('creator').notNull(),
+        gameDifficulty: text('game_difficulty', { enum: enumValues(GameDifficulty) }).notNull(),
+        // Our own difficulty the player suggests, null is N/A
+        listDifficultyId: integer('list_difficulty_id').references(() => difficulty.id, {
+            onDelete: 'set null',
+        }),
+        // Media key of the uploaded preview, it goes to the level once accepted
+        preview: text('preview'),
+        // Completion of the player
+        videoUrl: text('video_url').notNull(),
+        rawFootageUrl: text('raw_footage_url'),
+        notes: text('notes'),
+        status: text('status', { enum: enumValues(RecordStatus) })
+            .notNull()
+            .default(RecordStatus.Pending),
+        // The level made from it once accepted
+        levelId: integer('level_id').references(() => level.id, { onDelete: 'set null' }),
+        submittedAt: integer('submitted_at', { mode: 'timestamp_ms' })
+            .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+            .notNull(),
+    },
+    (table) => [
+        index('levelSubmission_playerId_idx').on(table.playerId),
+        index('levelSubmission_status_idx').on(table.status),
+        index('levelSubmission_gdId_idx').on(table.gdId),
+        index('levelSubmission_listDifficultyId_idx').on(table.listDifficultyId),
+        index('levelSubmission_levelId_idx').on(table.levelId),
+    ],
+)
+
 // Engagement ratings, one per player and level
 export const rating = sqliteTable(
     'rating',

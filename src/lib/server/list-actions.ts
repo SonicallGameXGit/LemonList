@@ -1,8 +1,16 @@
 // Changes of the demon list made by players (records, ratings, avatars) and admins (levels, reviews,
 // verification). Throws ActionError with a message that is safe to show
-import { and, count, eq, gt, gte, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm'
+import { and, asc, count, eq, gt, gte, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
-import { difficulty, level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
+import {
+    difficulty,
+    level,
+    levelSubmission,
+    listChange,
+    rating,
+    record,
+    user,
+} from '#lib/server/db/schema.ts'
 import { MediaKind, deleteMedia, saveImage } from '#lib/server/media.ts'
 import { ActionError } from '#lib/server/forms.ts'
 import {
@@ -12,6 +20,7 @@ import {
     hasPendingRecord,
 } from '#lib/server/list.ts'
 import { GameDifficulty, ListChangeKind, RecordStatus } from '#lib/list.ts'
+import { shuffleDifficulties } from '#lib/difficulty-shuffle.ts'
 import type { IconKit } from '#lib/icons.ts'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
@@ -281,17 +290,63 @@ function placeLevel(
     return to
 }
 
-export function moveLevel(levelId: number, position: number | null) {
+type ListedLevel = {
+    id: number
+    listDifficultyId: number | null
+}
+
+// Takes our difficulties along with a move (#lib/difficulty-shuffle.ts). `levels` are in the order
+// of the list, `index` is the new place of the level starting from 0
+function shuffleListDifficulties(
+    tx: Transaction,
+    levels: ListedLevel[],
+    levelId: number,
+    index: number,
+) {
+    const changes = shuffleDifficulties(
+        levels.map((row) => ({
+            id: row.id,
+            difficulty: row.listDifficultyId === null ? null : { id: row.listDifficultyId },
+        })),
+        levels.findIndex((row) => row.id === levelId),
+        index,
+    )
+
+    for (const change of changes) {
+        tx.update(level)
+            .set({ listDifficultyId: change.to.id })
+            .where(eq(level.id, change.id))
+            .run()
+    }
+}
+
+// Moves a level of the Main List, `withDifficulties` takes our difficulties along
+export function moveLevel(levelId: number, position: number, withDifficulties: boolean) {
     const target = findLevel(levelId)
 
+    if (target.position === null) {
+        throw new ActionError('This level is on the Future List now')
+    }
+
     db.transaction((tx) => {
+        if (withDifficulties) {
+            const levels = tx
+                .select({ id: level.id, listDifficultyId: level.listDifficultyId })
+                .from(level)
+                .where(isNotNull(level.position))
+                .orderBy(asc(level.position))
+                .all()
+
+            shuffleListDifficulties(tx, levels, levelId, position - 1)
+        }
+
         placeLevel(tx, target, position)
     })
 }
 
 // Moves a level of the Future List to the place (1 is the hardest). Renumbers the whole list, so
 // gaps and levels without a place are fixed on the way
-export function moveFutureLevel(levelId: number, place: number) {
+export function moveFutureLevel(levelId: number, place: number, withDifficulties: boolean) {
     const target = findLevel(levelId)
 
     if (target.position !== null) {
@@ -299,13 +354,18 @@ export function moveFutureLevel(levelId: number, place: number) {
     }
 
     db.transaction((tx) => {
-        const ids = tx
-            .select({ id: level.id })
+        const levels = tx
+            .select({ id: level.id, listDifficultyId: level.listDifficultyId })
             .from(level)
             .where(isNull(level.position))
             .orderBy(...futureListOrder)
             .all()
-            .map((row) => row.id)
+        const ids = levels.map((row) => row.id)
+
+        if (withDifficulties) {
+            shuffleListDifficulties(tx, levels, levelId, place - 1)
+        }
+
         const reordered = ids.filter((id) => id !== levelId)
         reordered.splice(clamp(place, 1, ids.length) - 1, 0, levelId)
 
@@ -331,6 +391,23 @@ export type LevelInput = {
     listDifficultyId: number | null
     // Null keeps the level on the Future List
     position: number | null
+}
+
+// Null is N/A
+function checkListDifficulty(difficultyId: number | null) {
+    if (difficultyId === null) {
+        return
+    }
+
+    const chosen = db
+        .select({ id: difficulty.id })
+        .from(difficulty)
+        .where(eq(difficulty.id, difficultyId))
+        .get()
+
+    if (chosen === undefined) {
+        throw new ActionError("This LemonList difficulty doesn't exist anymore")
+    }
 }
 
 // Checks the input and returns the columns to store
@@ -363,17 +440,7 @@ function levelColumns(input: LevelInput, levelId: number | null) {
         verifierId = verifier.id
     }
 
-    if (input.listDifficultyId !== null) {
-        const chosen = db
-            .select({ id: difficulty.id })
-            .from(difficulty)
-            .where(eq(difficulty.id, input.listDifficultyId))
-            .get()
-
-        if (chosen === undefined) {
-            throw new ActionError("This LemonList difficulty doesn't exist anymore")
-        }
-    }
+    checkListDifficulty(input.listDifficultyId)
 
     if (input.position !== null && input.verificationProgress !== 100) {
         throw new ActionError(
@@ -464,6 +531,204 @@ export async function deleteLevel(levelId: number) {
     if (current.preview !== null) {
         await deleteMedia(current.preview)
     }
+}
+
+// Level submissions: players send levels they beat that aren't on the list, the admins place them
+
+// Pending submissions a player can have at once
+const PENDING_SUBMISSIONS_MAX = 5
+
+export type SubmissionInput = {
+    gdId: number
+    name: string
+    creator: string
+    gameDifficulty: GameDifficulty
+    // Our difficulty the player suggests, null is N/A
+    listDifficultyId: number | null
+    videoUrl: string
+    rawFootageUrl: string | null
+    notes: string | null
+}
+
+export async function submitLevel(
+    playerId: string,
+    input: SubmissionInput,
+    preview: Uint8Array | null,
+) {
+    const listed = db
+        .select({ name: level.name })
+        .from(level)
+        .where(eq(level.gdId, input.gdId))
+        .get()
+
+    if (listed !== undefined) {
+        throw new ActionError(
+            `${listed.name} is on the list already, submit a record for it on your dashboard`,
+        )
+    }
+
+    const pending = db
+        .select({ gdId: levelSubmission.gdId })
+        .from(levelSubmission)
+        .where(
+            and(
+                eq(levelSubmission.playerId, playerId),
+                eq(levelSubmission.status, RecordStatus.Pending),
+            ),
+        )
+        .all()
+
+    if (pending.some((row) => row.gdId === input.gdId)) {
+        throw new ActionError('You already sent this level, it is waiting for a review')
+    }
+
+    if (pending.length >= PENDING_SUBMISSIONS_MAX) {
+        throw new ActionError(
+            `You can have up to ${PENDING_SUBMISSIONS_MAX} levels waiting for a review, wait for the admins to check them`,
+        )
+    }
+
+    checkListDifficulty(input.listDifficultyId)
+
+    await withPreview(preview, (key) =>
+        db
+            .insert(levelSubmission)
+            .values({ ...input, playerId, preview: key })
+            .run(),
+    )
+}
+
+function findPendingSubmission(submissionId: number, playerId: string | null = null) {
+    const row = db
+        .select({
+            id: levelSubmission.id,
+            playerId: levelSubmission.playerId,
+            gdId: levelSubmission.gdId,
+            preview: levelSubmission.preview,
+        })
+        .from(levelSubmission)
+        .where(
+            and(
+                eq(levelSubmission.id, submissionId),
+                eq(levelSubmission.status, RecordStatus.Pending),
+                playerId === null ? undefined : eq(levelSubmission.playerId, playerId),
+            ),
+        )
+        .get()
+
+    if (row === undefined) {
+        throw new ActionError('This submission was reviewed or withdrawn already')
+    }
+
+    return row
+}
+
+// Players can take back their submissions until an admin reviews them
+export async function withdrawLevelSubmission(playerId: string, submissionId: number) {
+    const submission = findPendingSubmission(submissionId, playerId)
+
+    db.delete(levelSubmission).where(eq(levelSubmission.id, submission.id)).run()
+
+    if (submission.preview !== null) {
+        await deleteMedia(submission.preview)
+    }
+}
+
+export async function rejectLevelSubmission(submissionId: number) {
+    const submission = findPendingSubmission(submissionId)
+
+    db.update(levelSubmission)
+        .set({ status: RecordStatus.Rejected, preview: null })
+        .where(eq(levelSubmission.id, submission.id))
+        .run()
+
+    if (submission.preview !== null) {
+        await deleteMedia(submission.preview)
+    }
+}
+
+// Makes the level from the form of the admins (it can differ from the submission). The completion
+// of the player becomes a record, approved right away if their account is verified. Pending
+// submissions of the same level by other players become records waiting for a review. The preview
+// of the player stays unless the admins upload another one or remove it. Returns the level id
+export async function acceptLevelSubmission(
+    submissionId: number,
+    input: LevelInput,
+    preview: Uint8Array | null,
+    removePreview: boolean,
+) {
+    const submission = findPendingSubmission(submissionId)
+    const columns = levelColumns(input, null)
+    const submissions = db
+        .select({
+            id: levelSubmission.id,
+            playerId: levelSubmission.playerId,
+            preview: levelSubmission.preview,
+            videoUrl: levelSubmission.videoUrl,
+            rawFootageUrl: levelSubmission.rawFootageUrl,
+            notes: levelSubmission.notes,
+            accountVerified: user.accountVerified,
+        })
+        .from(levelSubmission)
+        .innerJoin(user, eq(user.id, levelSubmission.playerId))
+        .where(
+            and(
+                eq(levelSubmission.gdId, submission.gdId),
+                eq(levelSubmission.status, RecordStatus.Pending),
+            ),
+        )
+        .all()
+    const replacesPreview = preview !== null || removePreview
+
+    const levelId = await withPreview(preview, (key) =>
+        db.transaction((tx) => {
+            const created = tx
+                .insert(level)
+                .values({ ...columns, preview: replacesPreview ? key : submission.preview })
+                .returning({ id: level.id, name: level.name, position: level.position })
+                .get()
+
+            placeLevel(tx, created, input.position)
+
+            for (const row of submissions) {
+                const reviewed = row.id === submission.id
+
+                // The verifier beat it already, the verification counts like a completion
+                if (row.playerId !== columns.verifierId) {
+                    tx.insert(record)
+                        .values({
+                            levelId: created.id,
+                            playerId: row.playerId,
+                            progress: 100,
+                            videoUrl: row.videoUrl,
+                            rawFootageUrl: row.rawFootageUrl,
+                            notes: row.notes,
+                            status:
+                                reviewed && row.accountVerified
+                                    ? RecordStatus.Approved
+                                    : RecordStatus.Pending,
+                        })
+                        .run()
+                }
+
+                tx.update(levelSubmission)
+                    .set({ status: RecordStatus.Approved, levelId: created.id, preview: null })
+                    .where(eq(levelSubmission.id, row.id))
+                    .run()
+            }
+
+            return created.id
+        }),
+    )
+
+    // The preview of the accepted submission went to the level, unless it was replaced
+    for (const row of submissions) {
+        if (row.preview !== null && (row.id !== submission.id || replacesPreview)) {
+            await deleteMedia(row.preview)
+        }
+    }
+
+    return levelId
 }
 
 // Difficulties of our own meter

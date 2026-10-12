@@ -14,7 +14,15 @@ import {
     type SQL,
 } from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
-import { difficulty, level, listChange, rating, record, user } from '#lib/server/db/schema.ts'
+import {
+    difficulty,
+    level,
+    levelSubmission,
+    listChange,
+    rating,
+    record,
+    user,
+} from '#lib/server/db/schema.ts'
 import { avatarUrl, levelThumbnailUrl, mediaUrl } from '#lib/server/media.ts'
 import { isAdminRole } from '#lib/auth-rules.ts'
 import {
@@ -28,10 +36,12 @@ import {
     type LevelRecord,
     type LevelDraft,
     type LevelRef,
+    type LevelSubmission,
     type ListChange,
     type ListDifficulty,
     type PlayerRef,
     type ReviewRecord,
+    type ReviewSubmission,
 } from '#lib/list.ts'
 
 // List points of a level at the given position of the Main List
@@ -873,4 +883,101 @@ export function getMainListSize() {
     return (
         db.select({ count: count() }).from(level).where(isNotNull(level.position)).get()?.count ?? 0
     )
+}
+
+// Level submissions
+
+function selectSubmissions(where: SQL | undefined) {
+    return db
+        .select({
+            id: levelSubmission.id,
+            gdId: levelSubmission.gdId,
+            name: levelSubmission.name,
+            creator: levelSubmission.creator,
+            gameDifficulty: levelSubmission.gameDifficulty,
+            preview: levelSubmission.preview,
+            videoUrl: levelSubmission.videoUrl,
+            rawFootageUrl: levelSubmission.rawFootageUrl,
+            notes: levelSubmission.notes,
+            status: levelSubmission.status,
+            submittedAt: levelSubmission.submittedAt,
+            playerId: levelSubmission.playerId,
+            accountVerified: user.accountVerified,
+            player: playerColumns(user),
+            listDifficulty: difficultyColumns,
+            level: levelRefColumns,
+        })
+        .from(levelSubmission)
+        .innerJoin(user, eq(user.id, levelSubmission.playerId))
+        .leftJoin(difficulty, eq(difficulty.id, levelSubmission.listDifficultyId))
+        .leftJoin(level, eq(level.id, levelSubmission.levelId))
+        .where(and(where, visiblePlayer()))
+}
+
+type SubmissionRow = ReturnType<ReturnType<typeof selectSubmissions>['all']>[number]
+
+function toLevelSubmission(row: SubmissionRow): LevelSubmission {
+    return {
+        id: row.id,
+        gdId: row.gdId,
+        name: row.name,
+        creator: row.creator,
+        gameDifficulty: row.gameDifficulty,
+        listDifficulty: row.listDifficulty === null ? null : toListDifficulty(row.listDifficulty),
+        thumbnailUrl: levelThumbnailUrl(row.preview, row.videoUrl),
+        videoUrl: row.videoUrl,
+        rawFootageUrl: row.rawFootageUrl,
+        notes: row.notes,
+        status: row.status,
+        submittedAt: row.submittedAt,
+        level: row.level === null ? null : toLevelRef(row.level),
+    }
+}
+
+function toReviewSubmission(row: SubmissionRow): ReviewSubmission {
+    return {
+        ...toLevelSubmission(row),
+        player: requirePlayerRef(row.player),
+        playerId: row.playerId,
+        accountVerified: row.accountVerified,
+        hasPreview: row.preview !== null,
+    }
+}
+
+// Levels the player sent, with every status
+export function getLevelSubmissions(playerId: string) {
+    return selectSubmissions(eq(levelSubmission.playerId, playerId))
+        .orderBy(desc(levelSubmission.submittedAt))
+        .all()
+        .map(toLevelSubmission)
+}
+
+export function countPendingSubmissions() {
+    const row = db
+        .select({ count: count() })
+        .from(levelSubmission)
+        .innerJoin(user, eq(user.id, levelSubmission.playerId))
+        .where(and(eq(levelSubmission.status, RecordStatus.Pending), visiblePlayer()))
+        .get()
+
+    return row?.count ?? 0
+}
+
+// The review queue starts from the oldest submission, the other statuses from the newest
+export function getReviewSubmissions(status: RecordStatus, limit: number) {
+    return selectSubmissions(eq(levelSubmission.status, status))
+        .orderBy(
+            status === RecordStatus.Pending
+                ? asc(levelSubmission.submittedAt)
+                : desc(levelSubmission.submittedAt),
+        )
+        .limit(limit)
+        .all()
+        .map(toReviewSubmission)
+}
+
+export function getReviewSubmission(id: number) {
+    const row = selectSubmissions(eq(levelSubmission.id, id)).get()
+
+    return row === undefined ? undefined : toReviewSubmission(row)
 }

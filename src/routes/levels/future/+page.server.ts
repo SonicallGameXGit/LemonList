@@ -1,6 +1,6 @@
 import * as v from 'valibot'
 import { requireAdmin } from '#lib/server/access.ts'
-import { attempt, id, parseForm, requiredInteger } from '#lib/server/forms.ts'
+import { attempt, checkbox, id, parseForm, requiredInteger } from '#lib/server/forms.ts'
 import { moveFutureLevel } from '#lib/server/list-actions.ts'
 import { getFutureList } from '#lib/server/list.ts'
 import type { Actions, PageServerLoad } from './$types'
@@ -19,6 +19,8 @@ export const actions = {
             v.object({
                 level: id(),
                 position: requiredInteger('Place', 1, Number.MAX_SAFE_INTEGER),
+                // Takes our difficulties along (#lib/difficulty-shuffle.ts)
+                difficulties: checkbox(),
             }),
         )
 
@@ -28,6 +30,8 @@ export const actions = {
 
         const input = parsed.data
 
-        return attempt('move', () => moveFutureLevel(input.level, input.position))
+        return attempt('move', () =>
+            moveFutureLevel(input.level, input.position, input.difficulties),
+        )
     },
 } satisfies Actions

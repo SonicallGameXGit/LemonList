@@ -1,6 +1,7 @@
 // Requests to the Geometry Dash servers (the same ones the game makes), to copy the icon kit of a
-// game account into the garage
+// game account into the garage and to fill the level form from the level ID
 import { ActionError } from '#lib/server/forms.ts'
+import { GameDifficulty } from '#lib/list.ts'
 import {
     IconMode,
     defaultIconKit,
@@ -58,10 +59,22 @@ async function request(endpoint: string, fields: Record<string, string>) {
     return response.text()
 }
 
-// Responses are 'key:value:key:value...', several objects are separated by '|' and the page info
-// follows '#'. Only the first object is read, '-1' (nothing found) gives an empty one
-function parseObject(text: string) {
-    const parts = text.split('#')[0].split('|')[0].split(':')
+// A player can look up something on the servers (or the other sites the lookups use) every few
+// seconds. Throws if it's too early
+export function checkLookupCooldown(playerId: string) {
+    const now = Date.now()
+    const lastLookup = lastLookups.get(playerId)
+
+    if (lastLookup !== undefined && now - lastLookup < LOOKUP_COOLDOWN) {
+        throw new ActionError('Wait a few seconds before looking up again')
+    }
+
+    lastLookups.set(playerId, now)
+}
+
+// Objects are 'key:value:key:value...' (the separator differs for some of them)
+function parseFields(text: string, separator = ':') {
+    const parts = text.split(separator)
     const object = new Map<string, string>()
 
     for (let index = 0; index + 1 < parts.length; index += 2) {
@@ -69,6 +82,12 @@ function parseObject(text: string) {
     }
 
     return object
+}
+
+// Responses are objects separated by '|', the sections (like the page info) follow '#'. Only the
+// first object is read, '-1' (nothing found) gives an empty one
+function parseObject(text: string) {
+    return parseFields(text.split('#')[0].split('|')[0])
 }
 
 function numberOf(object: Map<string, string>, key: string) {
@@ -88,14 +107,7 @@ export async function fetchGameIconKit(
     playerId: string,
     gdUsername: string,
 ): Promise<{ username: string; kit: IconKit } | null> {
-    const now = Date.now()
-    const lastLookup = lastLookups.get(playerId)
-
-    if (lastLookup !== undefined && now - lastLookup < LOOKUP_COOLDOWN) {
-        throw new ActionError('Wait a few seconds before looking up again')
-    }
-
-    lastLookups.set(playerId, now)
+    checkLookupCooldown(playerId)
 
     // The search finds the account and the shown icon, the user info has the rest of the kit
     const found = parseObject(await request('getGJUsers20.php', { str: gdUsername }))
@@ -144,4 +156,66 @@ export async function fetchGameIconKit(
     }
 
     return { username, kit }
+}
+
+// Faces of the rated levels that aren't demons ('9' of a level, the numerator of the difficulty)
+const ratedDifficulties: Record<string, GameDifficulty> = {
+    '10': GameDifficulty.Easy,
+    '20': GameDifficulty.Normal,
+    '30': GameDifficulty.Hard,
+    '40': GameDifficulty.Harder,
+    '50': GameDifficulty.Insane,
+}
+
+// Demon difficulties ('43' of a level), anything else is a Hard Demon like in the game
+const demonDifficulties: Record<string, GameDifficulty> = {
+    '3': GameDifficulty.EasyDemon,
+    '4': GameDifficulty.MediumDemon,
+    '5': GameDifficulty.InsaneDemon,
+    '6': GameDifficulty.ExtremeDemon,
+}
+
+// The rating of the game. Unrated levels show a face from the votes of the players, that's not a
+// rating, so they are N/A
+function gameDifficultyOf(object: Map<string, string>) {
+    const stars = numberOf(object, '18')
+
+    if (stars === null || stars === 0) {
+        return GameDifficulty.NA
+    }
+
+    if (object.get('25') === '1') {
+        return GameDifficulty.Auto
+    }
+
+    if (object.get('17') === '1') {
+        return demonDifficulties[object.get('43') ?? ''] ?? GameDifficulty.HardDemon
+    }
+
+    return ratedDifficulties[object.get('9') ?? ''] ?? GameDifficulty.NA
+}
+
+export type GameLevel = {
+    name: string
+    // Empty if the creator has no account anymore (the game shows '-')
+    creator: string
+    gameDifficulty: GameDifficulty
+}
+
+// A level of the online levels by its ID, null if there is no such level (or it isn't uploaded)
+export async function fetchGameLevel(gdId: number): Promise<GameLevel | null> {
+    const response = await request('getGJLevels21.php', { str: String(gdId), type: '0' })
+    const level = parseObject(response)
+    const name = level.get('2')
+
+    if (numberOf(level, '1') !== gdId || name === undefined || name === '') {
+        return null
+    }
+
+    // Creators are the second section, 'playerID:name:accountID' each
+    const playerId = level.get('6')
+    const creators = (response.split('#')[1] ?? '').split('|').map((entry) => entry.split(':'))
+    const creator = creators.find((entry) => entry[0] === playerId)?.[1] ?? ''
+
+    return { name, creator, gameDifficulty: gameDifficultyOf(level) }
 }

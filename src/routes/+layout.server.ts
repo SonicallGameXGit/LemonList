@@ -1,6 +1,6 @@
 import { avatarUrl } from '#lib/server/media.ts'
 import { isAdmin } from '#lib/server/access.ts'
-import { countPendingRecords } from '#lib/server/list.ts'
+import { countPendingRecords, countPendingSubmissions } from '#lib/server/list.ts'
 import type { LayoutServerLoad } from './$types'
 
 export const load: LayoutServerLoad = ({ locals }) => {
@@ -26,6 +26,7 @@ export const load: LayoutServerLoad = ({ locals }) => {
             admin,
             // Shown next to the admin link
             pendingRecords: admin ? countPendingRecords() : 0,
+            pendingSubmissions: admin ? countPendingSubmissions() : 0,
             createdAt: user.createdAt,
         },
     }

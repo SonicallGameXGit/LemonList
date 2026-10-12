@@ -1,7 +1,7 @@
 // Fills the database with sample data for development: pnpm db:seed
 // Adds sample players (password: lemonlist), levels with generated previews, records, ratings and
 // list history, and the Demons In Between difficulties if they're missing. Refuses to run if there are levels already, pnpm db:seed --reset deletes ALL list
-// data (levels, records, ratings, history) and the sample players first.
+// data (levels, records, ratings, history, level submissions) and the sample players first.
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import Database from 'better-sqlite3'
@@ -15,7 +15,7 @@ import { MediaKind, deleteMediaFile, writeImage } from '../src/lib/server/media-
 import { addDibDifficulties } from './dib.ts'
 import { drawScene } from './scene.ts'
 
-const { difficulty, level, listChange, rating, record, user, account } = schema
+const { difficulty, level, levelSubmission, listChange, rating, record, user, account } = schema
 
 const databaseUrl = process.env.DATABASE_URL
 const mediaDir =
@@ -49,6 +49,11 @@ async function reset() {
         .from(level)
         .where(isNotNull(level.preview))
         .all()
+    const submissionPreviews = db
+        .select({ preview: levelSubmission.preview })
+        .from(levelSubmission)
+        .where(isNotNull(levelSubmission.preview))
+        .all()
     const players = db
         .select({ id: user.id, avatar: user.avatar })
         .from(user)
@@ -59,6 +64,7 @@ async function reset() {
         tx.delete(listChange).run()
         tx.delete(rating).run()
         tx.delete(record).run()
+        tx.delete(levelSubmission).run()
         tx.delete(level).run()
 
         if (players.length > 0) {
@@ -73,7 +79,11 @@ async function reset() {
         }
     })
 
-    const keys = [...previews.map((row) => row.preview), ...players.map((player) => player.avatar)]
+    const keys = [
+        ...previews.map((row) => row.preview),
+        ...submissionPreviews.map((row) => row.preview),
+        ...players.map((player) => player.avatar),
+    ]
 
     for (const key of keys) {
         if (key !== null) {

@@ -20,7 +20,13 @@
         { href: resolve('/levels/future'), label: 'Future List', badge: 0 },
         { href: resolve('/players'), label: 'Players', badge: 0 },
         ...(data.user !== null && data.user.admin
-            ? [{ href: resolve('/admin'), label: 'Admin', badge: data.user.pendingRecords }]
+            ? [
+                  {
+                      href: resolve('/admin'),
+                      label: 'Admin',
+                      badge: data.user.pendingRecords + data.user.pendingSubmissions,
+                  },
+              ]
             : []),
     ])
 
@@ -51,7 +57,7 @@
     {#if link.badge > 0}
         <span
             class="ml-1 inline-grid min-w-7 place-items-center rounded-full border-2 border-black bg-gd-red px-1.5 align-middle text-base"
-            title="{link.badge} records to review"
+            title="{link.badge} records and levels to review"
         >
             {link.badge}
         </span>

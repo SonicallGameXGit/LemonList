@@ -1,47 +1,14 @@
-// The difficulties of the Demons In Between mod (hiimjasmine00, textures by Krintop), the default
-// set of our own meter. Faces are in scripts/dib, extracted from the mod resources
+// Adds the Demons In Between difficulties (src/lib/dib.ts) to our own meter. Faces are in
+// scripts/dib, extracted from the mod resources
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { count, sql } from 'drizzle-orm'
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import * as schema from '../src/lib/server/db/schema.ts'
 import { MediaKind, writeImage } from '../src/lib/server/media-store.ts'
+import { dibDifficulties } from '../src/lib/dib.ts'
 
 const { difficulty } = schema
-
-// From the easiest
-export const dibDifficulties = [
-    'Free Demon',
-    'Peaceful Demon',
-    'Simple Demon',
-    'Easy Demon',
-    'Casual Demon',
-    'Mild Demon',
-    'Medium Demon',
-    'Normal Demon',
-    'Moderate Demon',
-    'Tricky Demon',
-    'Hard Demon',
-    'Harder Demon',
-    'Tough Demon',
-    'Wild Demon',
-    'Insane Demon',
-    'Cruel Demon',
-    'Crazy Demon',
-    'Bizarre Demon',
-    'Brutal Demon',
-    'Extreme Demon',
-    'Radical Demon',
-    'Supreme Demon',
-    'Ultimate Demon',
-    'Horrendous Demon',
-    'Inhumane Demon',
-    'Slaughter Demon',
-    'Apocalyptic Demon',
-    'Divine Demon',
-    'Silent Demon',
-    'Infinite Demon',
-]
 
 function facePath(name: string) {
     return path.join(import.meta.dirname, 'dib', name.toLowerCase().replaceAll(' ', '-') + '.png')

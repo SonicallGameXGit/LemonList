@@ -137,9 +137,8 @@ export type AdminPlayer = {
     createdAt: Date
 }
 
-// Stored fields of a level for the admin form
-export type LevelDraft = {
-    id: number
+// Fields of the level form (LevelForm.svelte): a stored level, or a submission to review
+export type LevelFormValues = {
     gdId: number
     name: string
     creator: string
@@ -153,6 +152,49 @@ export type LevelDraft = {
     // Null is N/A
     listDifficultyId: number | null
     position: number | null
+}
+
+// Stored fields of a level for the admin form
+export type LevelDraft = LevelFormValues & {
+    id: number
+}
+
+// A level a player beat that isn't on the list yet, the admins place it or reject it. Accepting
+// makes the level and a record of the player
+export type LevelSubmission = {
+    id: number
+    gdId: number
+    name: string
+    creator: string
+    gameDifficulty: GameDifficulty
+    // Our difficulty the player suggests, null is N/A
+    listDifficulty: ListDifficulty | null
+    thumbnailUrl: string
+    // Completion of the player
+    videoUrl: string
+    rawFootageUrl: string | null
+    notes: string | null
+    status: RecordStatus
+    submittedAt: Date
+    // The level made from it once accepted, null if it was deleted since then
+    level: LevelRef | null
+}
+
+// A submission with everything the admins need to review it
+export type ReviewSubmission = LevelSubmission & {
+    player: PlayerRef
+    playerId: string
+    accountVerified: boolean
+    // The player uploaded a preview, otherwise thumbnailUrl is the one of the video
+    hasPreview: boolean
+}
+
+// A change of our own difficulty that comes with a move on the Main or Future List
+export type DifficultyChange = {
+    levelId: number
+    levelName: string
+    from: ListDifficulty
+    to: ListDifficulty
 }
 
 export type LeaderboardEntry = {

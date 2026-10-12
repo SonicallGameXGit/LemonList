@@ -161,6 +161,10 @@
 
                 <GdButton type="submit" class="self-center" disabled={submitting}>Submit</GdButton>
             </form>
+            <p class="mt-5 text-center text-lg text-ink-200">
+                Beat a level that isn't on the list?
+                <a href={resolve('/dashboard/submit-level')} class="gd-gold">Submit the level</a>
+            </p>
         </section>
 
         <div class="flex min-w-0 flex-col gap-14">
