@@ -3,6 +3,7 @@
     import { ListChangeKind } from '#lib/list.ts'
     import { formatDate } from '#lib/format.ts'
     import Avatar from '#lib/components/Avatar.svelte'
+    import ChangelogMajor from '#lib/components/ChangelogMajor.svelte'
     import CategoryButton from '#lib/components/CategoryButton.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
@@ -153,3 +154,17 @@
         {/if}
     </section>
 </div>
+
+{#if data.changelogs.length > 0}
+    <section class="mt-20">
+        <h2 class="text-center gd-title text-4xl">What's new</h2>
+        <div class="mt-6 flex flex-col gap-8">
+            {#each data.changelogs as update (update.version)}
+                <ChangelogMajor {update} />
+            {/each}
+        </div>
+        <div class="mt-6 text-center">
+            <GdButton href={resolve('/changelogs')}>All changelogs</GdButton>
+        </div>
+    </section>
+{/if}

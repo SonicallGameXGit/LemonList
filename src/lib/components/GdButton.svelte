@@ -12,6 +12,9 @@
         disabled?: boolean
         title?: string
         pressed?: boolean
+        // Toggles: whether the element it shows (by id) is open
+        expanded?: boolean
+        controls?: string
         // Submit buttons: another action of the form and the value they send
         formaction?: string
         formnovalidate?: boolean
@@ -31,6 +34,8 @@
         disabled = false,
         title,
         pressed,
+        expanded,
+        controls,
         formaction,
         formnovalidate,
         name,
@@ -59,6 +64,8 @@
         {disabled}
         {title}
         aria-pressed={pressed}
+        aria-expanded={expanded}
+        aria-controls={controls}
         {formaction}
         {formnovalidate}
         {name}

@@ -49,6 +49,7 @@ Demonlist / Pointercrate alternative for a local Geometry Dash community, coveri
     - `pnpm icons "<Geometry Dash>/Resources"` extracts the icons from the game into `static/gd/icons/<mode>/<id>.png` (frames repacked in one column), `static/gd/icons/manifest.json` (frames, robot/spider idle poses) and the garage buttons into `static/gd/garage`. Rerun after game updates that add icons.
     - "Auto-Apply" copies the kit of a game account: `src/lib/server/gd-servers.ts` asks the Geometry Dash servers (boomlings.com, `getGJUsers20` for the account and shown mode, `getGJUserInfo20` for the icons, colors and glow; requests must have an empty User-Agent or they get 403). It only fills the garage, the player still saves. One lookup per player every 5 seconds, the servers ban spamming IPs.
     - `src/lib/icons.ts` composes icons into SVG (layers, tints, poses; no SvelteKit imports), `src/lib/icon-kit.ts` loads and validates the manifest and kits, `src/lib/server/icons.ts` renders a kit to PNG. Show icons with `GdIcon`. The manifest is too big for page data: the garage loads it in the browser, the server reads it with `event.fetch`.
+- Changelogs (`/changelogs`, the newest 2 on the landing page): Markdown files in `changelogs/` named by version, `N.0.md` is a major update and `N.M.md` its minor updates, with a front matter of `title` and `date` (`YYYY-MM-DD`). `src/lib/server/changelogs.ts` bundles them (`import.meta.glob`), renders them with **marked** and sorts them by version; a bad name, front matter or a minor update without its major one fails at startup. `ChangelogMajor` shows a major update, its minor ones open below it as a tree (closed by default). How to write them: see Writing Changelogs below.
 - Uploads: production needs `BODY_SIZE_LIMIT=10M` for adapter-node (default 512K), previews can be up to 8 MB.
 
 ## Commands
@@ -87,6 +88,42 @@ JSON:
 
 - 4 spaces indentation.
 - Arrays/objects with 0-3 small elements go inline (objects with spaces inside braces: `{ "a": 1 }`); everything else is multi-line with 1 indent level.
+
+## Writing Changelogs
+
+When asked to write news, a changelog or a "what's new" for an update (or for the latest work), do the whole job yourself: find what changed, choose Major or Minor, pick the version and write the text. Don't ask the user to decide unless the request is really unclear.
+
+1. **Find what changed.** Read the newest files in `changelogs/` (highest versions and their dates) to see what is already told, then `git log` and the diffs of the commits after it (or the work the user points at). Check the code when a commit message is vague; never describe a feature you didn't confirm.
+2. **Skip what players can't notice**: refactors, tooling, dependencies, docs, code style. Internal work only gets an entry when it fixed something that was broken for players or admins.
+3. **Choose the type by what players see, not by the size of the code.** Ask "will people notice this at a glance, and does it change what they can do or see on the site?" A few lines can be a major, a huge rewrite can be a minor or nothing.
+    - **Major** (`N.0.md`, N = the highest major + 1): anything visible to everyone right away that gives them something new to do or see: a new page, section, block on the home page or system (records, the icon kit, level submissions, the changelogs themselves). Also a batch of changes that together change how the site is used or looks. Example: the Changelogs page was little code, but anyone opening the site finds it at once and can now read every past and future update, so it is a major.
+    - **Minor** (`N.M.md`, the newest major's N and its highest M + 1): changes to things that already exist, which people only notice when they use that feature: improvements, extra options, admin-only tweaks and fixes. Fixes are minors even when they are important or critical, most people never notice them. A minor always belongs to the newest major, even when it is about an older feature.
+    - When unsure, imagine a player opening the site after a week away: if they would spot it and wonder "what's this?", it's a major; if they'd never notice, it's a minor.
+4. **Group sensibly.** One file is one update the players see, not one commit: merge related commits into one entry, split unrelated work into separate files (a major plus minors when a big feature came with separate fixes). Number the files in the order the work landed.
+5. **Never renumber or delete** existing files, and don't rewrite old entries (fixing a typo or a wrong fact is fine).
+
+File format, look at the existing files as examples:
+
+```md
+---
+title: Level submissions
+date: 2026-10-12
+---
+
+One or two sentences about what the update brings and why it matters (majors only).
+
+- One change per bullet
+```
+
+- `title`: 1-4 words in sentence case, naming the feature or the fix (`Icon Kit`, `Moving levels fixed`). Quote it if it contains a colon.
+- `date`: `YYYY-MM-DD`, the day the update went live (the date of its last commit).
+- Majors: a short intro paragraph, then 3-6 bullets. **Bold** the names of the main new things, a few per major at most.
+- Minors: 1-4 bullets only, no intro, no bold unless it names a new button or page.
+- Write for players, not developers: friendly and plain English, "you" for players, "admins" for admin features. No file names, function names, libraries, commit hashes or code. Use the names the UI shows (Main List, Future List, Fetch, Auto-Apply...).
+- Bullets start with a capital letter and have no final period. A fix starts with "Fixed" and says what was broken from the user's side ("Fixed levels not moving after...").
+- Only paragraphs, lists, bold and links to our own pages; no headings, images or HTML.
+
+Then run `pnpm format` (Markdown is checked by `pnpm lint`) and open `/changelogs` if a dev server is running to see that it renders.
 
 ## Workflow Notes
 

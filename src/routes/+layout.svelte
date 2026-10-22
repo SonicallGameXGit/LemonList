@@ -199,7 +199,10 @@
             class="relative z-10 mx-auto flex max-w-6xl flex-col items-center gap-1 px-28 pt-8 text-center text-base text-ink-200 sm:px-40"
         >
             <p>LemonList · the demon list of our community, from Easy Demons up.</p>
-            <p>Not affiliated with RobTop Games.</p>
+            <p>
+                Not affiliated with RobTop Games ·
+                <a href={resolve('/changelogs')} class="gd-link">Changelogs</a>
+            </p>
         </div>
         <img
             src={asset('gd/corner.png')}
