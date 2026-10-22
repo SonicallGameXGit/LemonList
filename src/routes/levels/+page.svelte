@@ -26,9 +26,10 @@
     let ordered: Level[] = $derived(data.levels)
     let moving = $state(false)
     let moveError: string | null = $state(null)
-    // A move that would change difficulties waits for the dialog
+    // A move that would change difficulties waits for the dialog. Raw, a deep proxy would wrap the
+    // level and it wouldn't be found in `ordered` anymore
     let pendingMove: { level: Level; position: number; changes: DifficultyChange[] } | null =
-        $state(null)
+        $state.raw(null)
 
     const admin = $derived(data.user !== null && data.user.admin)
     const filtered = $derived(query.trim() !== '' || difficulty !== null)
@@ -105,8 +106,7 @@
 
     async function send(level: Level, position: number, changes: DifficultyChange[]) {
         const updated = applyDifficultyChanges(ordered, changes)
-        const from = ordered.indexOf(level)
-        const moved = updated[from]
+        const moved = updated.find((other) => other.id === level.id)
 
         if (moved === undefined) {
             return
