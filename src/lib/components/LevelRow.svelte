@@ -1,4 +1,5 @@
 <script lang="ts">
+    import type { Snippet } from 'svelte'
     import { resolve } from '$app/paths'
     import type { Level } from '#lib/list.ts'
     import { formatEngagement, formatPoints } from '#lib/format.ts'
@@ -13,10 +14,14 @@
         // Shows the drag handle (admins on the Main or Future List), the arrow keys on it move the
         // level by one place of its list. Drag and drop itself is done by the list
         move?: (position: number) => void
+        // Replace the stats (or the verification progress) under the name
+        details?: Snippet
+        // Replace the View button
+        actions?: Snippet
     }
 
     // A cell of the level list, render it inside <GdList>
-    let { level, move }: Props = $props()
+    let { level, move, details, actions }: Props = $props()
 
     const href = $derived(resolve('/levels/[id]', { id: String(level.id) }))
     const difficulty = $derived(levelDifficultyRef(level))
@@ -24,16 +29,18 @@
     const place = $derived(level.position ?? level.futurePosition)
 </script>
 
-<li>
-    <!-- Phones stack the cell (preview, then the name, then the stats), wider screens put it in one row -->
-    <div class="level-row px-4 py-4 sm:px-6">
-        <div class="flex items-center gap-4 [grid-area:lead] sm:gap-6">
+<!-- The cell lays out by its own width (a container), not the screen's, so it also fits narrow
+ columns like the one of the dashboard -->
+<li class="@container">
+    <!-- Narrow cells stack (preview, then the name, then the stats), wider ones are one row -->
+    <div class="level-row px-4 py-4 @xl:px-6">
+        <div class="flex items-center gap-4 [grid-area:lead] @xl:gap-6">
             {#if move !== undefined && place !== null}
                 {@const position = place}
                 <!-- Up and down arrows, like the move buttons of the editor -->
                 <button
                     type="button"
-                    class="drag-handle -mr-1 flex shrink-0 cursor-grab touch-none flex-col items-center active:cursor-grabbing sm:-mr-2"
+                    class="drag-handle -mr-1 flex shrink-0 cursor-grab touch-none flex-col items-center select-none active:cursor-grabbing @xl:-mr-2"
                     title="Drag to move, or use the arrow keys"
                     aria-label="Move {level.name}, now at #{position}"
                     onkeydown={(event) => {
@@ -58,7 +65,7 @@
                 </button>
             {/if}
 
-            <div class="flex w-16 shrink-0 flex-col items-center gap-1 sm:w-20">
+            <div class="flex w-16 shrink-0 flex-col items-center gap-1 @xl:w-20">
                 <DifficultyFace {difficulty} class="w-full" />
                 <span class="gd-title text-xl text-gd-yellow">
                     {level.position === null ? 'Future' : `#${level.position}`}
@@ -71,35 +78,54 @@
                 src={level.thumbnailUrl}
                 alt=""
                 loading="lazy"
-                class="aspect-video w-full rounded-lg border-[3px] border-black object-cover md:w-44"
+                class="aspect-video w-full rounded-lg border-[3px] border-black object-cover"
             />
         </a>
 
-        <div class="flex min-w-0 flex-col gap-1.5 self-center [grid-area:title] sm:self-end">
+        <div class="flex min-w-0 flex-col gap-1.5 self-center [grid-area:title] @xl:self-end">
             <a
                 {href}
-                class="gd-title text-2xl break-words hover:brightness-110 sm:truncate sm:text-3xl"
+                class="gd-title text-2xl break-words hover:brightness-110 @xl:truncate @xl:text-3xl"
             >
                 {level.name}
             </a>
-            <p class="gd-gold text-lg break-words sm:truncate sm:text-xl">By {level.creator}</p>
+            <p class="gd-gold text-lg break-words @xl:truncate @xl:text-xl">
+                By {level.creator}
+                {#if level.verifier !== null}
+                    · {level.position === null ? 'Verifier' : 'Verified by'}
+                    <!-- Lights up with its own gradient: the gold is the line's background clipped
+                     to the text, a filter here gets Chrome to leave stale pixels after the hover -->
+                    <a
+                        href={resolve('/players/[username]', {
+                            username: level.verifier.username,
+                        })}
+                        class="bg-clip-text hover:bg-[linear-gradient(#ffc23d,#fff3a0)]"
+                    >
+                        {level.verifier.displayUsername}
+                    </a>
+                {/if}
+            </p>
         </div>
 
-        {#if level.position === null}
+        {#if details !== undefined}
+            <div class="min-w-0 self-center [grid-area:details] @xl:self-start">
+                {@render details()}
+            </div>
+        {:else if level.position === null}
             <div
-                class="flex max-w-sm items-center gap-3 self-center [grid-area:details] sm:self-start"
+                class="flex max-w-sm items-center gap-3 self-center [grid-area:details] @xl:self-start"
             >
                 <ProgressBar progress={level.verificationProgress} class="h-5" />
                 <span class="gd-title text-lg">{level.verificationProgress}%</span>
             </div>
         {:else}
             <div
-                class="flex min-w-0 flex-col gap-1.5 self-center [grid-area:details] sm:self-start"
+                class="flex min-w-0 flex-col gap-1.5 self-center [grid-area:details] @xl:self-start"
             >
-                <p class="gd-title text-lg text-gd-blue sm:truncate">{difficulty.name}</p>
+                <p class="gd-title text-lg text-gd-blue @xl:truncate">{difficulty.name}</p>
                 <p class="flex flex-wrap items-center gap-x-5 gap-y-1 gd-title text-lg">
                     <span class="flex items-center gap-2" title="List points">
-                        <Sprite name="star" class="h-6" />
+                        <Sprite name="diamond" class="h-6" />
                         {formatPoints(level.points)}
                     </span>
                     <span class="flex items-center gap-2" title="Records">
@@ -107,15 +133,19 @@
                         {level.recordsCount}
                     </span>
                     <span class="flex items-center gap-2" title="Engagement">
-                        <Sprite name="like" class="h-6" />
+                        <Sprite name="star" class="h-6" />
                         {level.engagement === null ? '-' : formatEngagement(level.engagement)}
                     </span>
                 </p>
             </div>
         {/if}
 
-        <div class="self-end justify-self-end [grid-area:view] sm:self-center">
-            <GdButton {href} white>View</GdButton>
+        <div class="self-end justify-self-end [grid-area:view] @xl:self-center">
+            {#if actions !== undefined}
+                {@render actions()}
+            {:else}
+                <GdButton {href} white>View</GdButton>
+            {/if}
         </div>
     </div>
 </li>
@@ -131,7 +161,8 @@
         gap: 0.75rem 1rem;
     }
 
-    @media (width >= 40rem) {
+    /* The widths of the cell on 40rem and 48rem wide screens, where it used to change */
+    @container (width >= 36rem) {
         .level-row {
             grid-template-columns: auto minmax(0, 1fr) auto;
             grid-template-areas:
@@ -145,7 +176,7 @@
         }
     }
 
-    @media (width >= 48rem) {
+    @container (width >= 44rem) {
         .level-row {
             grid-template-columns: auto auto minmax(0, 1fr) auto;
             grid-template-areas:
@@ -156,6 +187,7 @@
         .thumbnail {
             display: block;
             align-self: center;
+            width: 11rem;
         }
     }
 </style>

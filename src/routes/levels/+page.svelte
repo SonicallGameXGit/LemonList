@@ -1,9 +1,11 @@
 <script lang="ts">
-    import { refreshAll } from '$app/navigation'
+    import { goto, refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
+    import { page } from '$app/state'
     import type { DifficultyChange, Level } from '#lib/list.ts'
     import { naDifficultyRef } from '#lib/gd.ts'
     import { applyDifficultyChanges, moveDifficultyChanges, sendMove } from '#lib/move-level.ts'
+    import { pageHref, pageParam, paginate } from '#lib/pagination.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import CollapsibleRows from '#lib/components/CollapsibleRows.svelte'
@@ -13,10 +15,14 @@
     import ListLegend from '#lib/components/ListLegend.svelte'
     import MoveDialog from '#lib/components/MoveDialog.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
+    import RequestLevel from '#lib/components/RequestLevel.svelte'
     import SearchBox from '#lib/components/SearchBox.svelte'
     import type { PageProps } from './$types'
 
     let { data }: PageProps = $props()
+
+    const PAGE_SIZE = 25
 
     let query = $state('')
     // Like the difficulty filter of the search screen, no selection shows everything. Filters by
@@ -75,8 +81,26 @@
         )
     })
 
+    // Pages of the found levels
+    const pages = $derived(paginate(page.url, levels.length, PAGE_SIZE))
+    const shown = $derived(levels.slice(pages.offset, pages.offset + PAGE_SIZE))
+
+    // Another search starts from the first page
+    function firstPage() {
+        if (pageParam(page.url) !== 1) {
+            // eslint-disable-next-line svelte/no-navigation-without-resolve -- the current path
+            goto(pageHref(page.url, 1), { replace: true, reset: false })
+        }
+    }
+
+    function search(value: string) {
+        query = value
+        firstPage()
+    }
+
     function toggleDifficulty(option: number | 'na') {
         difficulty = difficulty === option ? null : option
+        firstPage()
     }
 
     function move(level: Level, position: number) {
@@ -134,10 +158,10 @@
         send(level, position, withDifficulties ? changes : [])
     }
 
-    // Indexes of the whole list, sorting is off while it's filtered
+    // Indexes of the current page, sorting is off while the list is filtered
     function sorted(from: number, to: number) {
-        const level = ordered[from]
-        const target = ordered[to]
+        const level = ordered[pages.offset + from]
+        const target = ordered[pages.offset + to]
 
         if (level !== undefined && target !== undefined && target.position !== null) {
             move(level, target.position)
@@ -158,7 +182,7 @@
         <p class="flex-1">
             {filtered
                 ? 'Clear the search and the difficulty filter to move levels.'
-                : 'Drag levels by the arrows on the left to move them, or focus the arrows and use the arrow keys.'}
+                : 'Drag levels by the arrows on the left to move them, or focus the arrows and use the arrow keys. Edit a level to move it to another page.'}
         </p>
         <GdButton href={resolve('/admin/levels/new')} size="sm">Add level</GdButton>
     </div>
@@ -167,9 +191,16 @@
             <Alert kind="error">{moveError}</Alert>
         </div>
     {/if}
+{:else}
+    <RequestLevel />
 {/if}
 
-<SearchBox label="Search levels" placeholder="Search levels..." class="mb-4" bind:value={query} />
+<SearchBox
+    label="Search levels"
+    placeholder="Search levels..."
+    class="mb-4"
+    bind:value={() => query, search}
+/>
 
 {#if difficultyOptions.length > 1}
     <div class="gd-dark mb-4 p-5">
@@ -214,6 +245,7 @@
     </div>
 {:else}
     <GdList
+        id="levels"
         attach={admin
             ? sortable({
                   handle: '.drag-handle',
@@ -222,13 +254,15 @@
               })
             : undefined}
     >
-        {#each levels as level (level.id)}
+        {#each shown as level (level.id)}
             <LevelRow
                 {level}
                 move={admin && !filtered ? (position) => move(level, position) : undefined}
             />
         {/each}
     </GdList>
+
+    <Pagination current={pages.page} count={pages.pages} anchor="levels" />
 {/if}
 
 <ListLegend />

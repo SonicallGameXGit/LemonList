@@ -11,16 +11,27 @@ import {
     requiredUrl,
 } from '#lib/server/forms.ts'
 import { submitRecord, withdrawRecord } from '#lib/server/list-actions.ts'
-import { getLevelsToRate, getMainList, getPlayerProfile, getSubmissions } from '#lib/server/list.ts'
+import {
+    countSubmissions,
+    getLevelsToRate,
+    getMainList,
+    getPlayerProfile,
+    getSubmissions,
+} from '#lib/server/list.ts'
+import { paginate } from '#lib/pagination.ts'
 import type { Actions, PageServerLoad } from './$types'
 
-export const load: PageServerLoad = ({ locals }) => {
+const SUBMISSIONS_PAGE_SIZE = 5
+
+export const load: PageServerLoad = ({ locals, url }) => {
     const user = locals.user
 
     // The dashboard layout already redirects guests
     if (user === undefined) {
-        return { stats: null, levels: [], submissions: [], levelsToRate: [] }
+        return { stats: null, levels: [], submissions: [], page: 1, pages: 1, levelsToRate: [] }
     }
+
+    const pages = paginate(url, countSubmissions(user.id), SUBMISSIONS_PAGE_SIZE)
 
     const profile =
         user.username === null || user.username === undefined
@@ -37,7 +48,9 @@ export const load: PageServerLoad = ({ locals }) => {
             name: level.name,
             position: level.position,
         })),
-        submissions: getSubmissions(user.id),
+        submissions: getSubmissions(user.id, SUBMISSIONS_PAGE_SIZE, pages.offset),
+        page: pages.page,
+        pages: pages.pages,
         levelsToRate: getLevelsToRate(user.id),
     }
 }

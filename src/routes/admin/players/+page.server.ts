@@ -3,21 +3,24 @@ import { PlayerFilter } from '#lib/list.ts'
 import { requireAdmin } from '#lib/server/access.ts'
 import { attempt, checkbox, parseForm } from '#lib/server/forms.ts'
 import { removeAvatar, setAccountVerified } from '#lib/server/list-actions.ts'
-import { getAdminPlayers } from '#lib/server/list.ts'
+import { countAdminPlayers, getAdminPlayers } from '#lib/server/list.ts'
+import { paginate } from '#lib/pagination.ts'
 import type { Actions, PageServerLoad } from './$types'
 
-const PLAYERS_LIMIT = 100
+const PAGE_SIZE = 25
 
 export const load: PageServerLoad = ({ url }) => {
     const filterResult = v.safeParse(v.enum(PlayerFilter), url.searchParams.get('filter'))
     const filter = filterResult.success ? filterResult.output : PlayerFilter.Unverified
     const search = (url.searchParams.get('q') ?? '').trim()
+    const pages = paginate(url, countAdminPlayers(filter, search), PAGE_SIZE)
 
     return {
         filter,
         search,
-        players: getAdminPlayers(filter, search, PLAYERS_LIMIT),
-        limit: PLAYERS_LIMIT,
+        players: getAdminPlayers(filter, search, PAGE_SIZE, pages.offset),
+        page: pages.page,
+        pages: pages.pages,
     }
 }
 

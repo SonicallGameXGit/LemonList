@@ -9,6 +9,7 @@
     import DifficultyFace from '#lib/components/DifficultyFace.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
     import RecordStatusBadge from '#lib/components/RecordStatusBadge.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -21,8 +22,8 @@
         { status: RecordStatus.Rejected, label: 'Rejected' },
     ]
 
-    // Keeps the current tab, a relative "?/action" would drop the query
-    const actionUrl = (action: string) => `?status=${data.status}&/${action}`
+    // Keeps the current tab and page, a relative "?/action" would drop the query
+    const actionUrl = (action: string) => `?status=${data.status}&page=${data.page}&/${action}`
 
     // Rejecting takes two clicks, the uploaded preview is deleted
     let rejecting: number | null = $state(null)
@@ -70,7 +71,7 @@
         </p>
     </div>
 {:else}
-    <GdList>
+    <GdList id="submissions">
         {#each data.submissions as submission (submission.id)}
             <li class="flex flex-col gap-4 px-4 py-4 sm:px-6">
                 <div class="flex flex-wrap items-center gap-4">
@@ -195,7 +196,5 @@
         {/each}
     </GdList>
 
-    {#if data.submissions.length === data.limit}
-        <p class="text-center text-ink-200">Showing the first {data.limit} submissions.</p>
-    {/if}
+    <Pagination current={data.page} count={data.pages} anchor="submissions" />
 {/if}

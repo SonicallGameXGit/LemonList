@@ -11,6 +11,7 @@
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
     import SearchBox from '#lib/components/SearchBox.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -31,10 +32,14 @@
         return resolve('/admin/players') + '?' + new URLSearchParams(query).toString()
     }
 
-    // Keeps the current tab and search, a relative "?/action" would drop the query
+    // Keeps the current tab, search and page, a relative "?/action" would drop the query
     const actionUrl = (action: string) =>
         '?' +
-        new URLSearchParams({ filter: data.filter, q: data.search }).toString() +
+        new URLSearchParams({
+            filter: data.filter,
+            q: data.search,
+            page: String(data.page),
+        }).toString() +
         '&/' +
         action
 
@@ -140,7 +145,7 @@
         </p>
     </div>
 {:else}
-    <GdList>
+    <GdList id="players">
         {#each data.players as player (player.id)}
             {@const self = data.user !== null && player.id === data.user.id}
             <li class="flex flex-col gap-4 px-4 py-4 sm:px-6">
@@ -270,9 +275,5 @@
         {/each}
     </GdList>
 
-    {#if data.players.length === data.limit}
-        <p class="text-center text-ink-200">
-            Showing the newest {data.limit} players, search to find others.
-        </p>
-    {/if}
+    <Pagination current={data.page} count={data.pages} anchor="players" />
 {/if}

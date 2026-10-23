@@ -1,8 +1,10 @@
 <script lang="ts">
     import { refreshAll } from '$app/navigation'
     import { resolve } from '$app/paths'
+    import { page } from '$app/state'
     import type { DifficultyChange, Level } from '#lib/list.ts'
     import { applyDifficultyChanges, moveDifficultyChanges, sendMove } from '#lib/move-level.ts'
+    import { paginate } from '#lib/pagination.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -10,9 +12,13 @@
     import LevelRow from '#lib/components/LevelRow.svelte'
     import MoveDialog from '#lib/components/MoveDialog.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
+    import RequestLevel from '#lib/components/RequestLevel.svelte'
     import type { PageProps } from './$types'
 
     let { data }: PageProps = $props()
+
+    const PAGE_SIZE = 25
 
     // Moves show up right away, the next load brings the real order back
     let ordered: Level[] = $derived(data.levels)
@@ -24,6 +30,8 @@
         $state.raw(null)
 
     const admin = $derived(data.user !== null && data.user.admin)
+    const pages = $derived(paginate(page.url, ordered.length, PAGE_SIZE))
+    const shown = $derived(ordered.slice(pages.offset, pages.offset + PAGE_SIZE))
 
     function move(level: Level, place: number) {
         if (moving || pendingMove !== null || place < 1 || place > ordered.length) {
@@ -74,11 +82,12 @@
         send(level, place, withDifficulties ? changes : [])
     }
 
+    // Indexes of the current page
     function sorted(from: number, to: number) {
-        const level = ordered[from]
+        const level = ordered[pages.offset + from]
 
         if (level !== undefined) {
-            move(level, to + 1)
+            move(level, pages.offset + to + 1)
         }
     }
 </script>
@@ -98,7 +107,8 @@
     >
         <p class="flex-1">
             Drag levels by the arrows on the left to put the harder ones higher, or focus the arrows
-            and use the arrow keys. New levels join at the bottom.
+            and use the arrow keys (they also move a level past the end of the page). New levels
+            join at the bottom.
         </p>
         <GdButton href={resolve('/admin/levels/new')} size="sm">Add level</GdButton>
     </div>
@@ -107,6 +117,8 @@
             <Alert kind="error">{moveError}</Alert>
         </div>
     {/if}
+{:else}
+    <RequestLevel />
 {/if}
 
 {#if ordered.length === 0}
@@ -116,6 +128,7 @@
     </div>
 {:else}
     <GdList
+        id="levels"
         attach={admin
             ? sortable({
                   handle: '.drag-handle',
@@ -124,10 +137,12 @@
               })
             : undefined}
     >
-        {#each ordered as level (level.id)}
+        {#each shown as level (level.id)}
             <LevelRow {level} move={admin ? (place) => move(level, place) : undefined} />
         {/each}
     </GdList>
+
+    <Pagination current={pages.page} count={pages.pages} anchor="levels" />
 {/if}
 
 <p class="text-center text-lg text-ink-200">The bar shows the verifier's best progress so far.</p>

@@ -8,6 +8,7 @@
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
     import RecordStatusBadge from '#lib/components/RecordStatusBadge.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -20,8 +21,8 @@
         { status: RecordStatus.Rejected, label: 'Rejected' },
     ]
 
-    // Keeps the current tab, a relative "?/action" would drop the query
-    const actionUrl = (action: string) => `?status=${data.status}&/${action}`
+    // Keeps the current tab and page, a relative "?/action" would drop the query
+    const actionUrl = (action: string) => `?status=${data.status}&page=${data.page}&/${action}`
 
     // Deleting takes two clicks
     let deleting: number | null = $state(null)
@@ -64,7 +65,7 @@
         </p>
     </div>
 {:else}
-    <GdList>
+    <GdList id="records">
         {#each data.records as record (record.id)}
             <li class="flex flex-col gap-4 px-4 py-4 sm:px-6">
                 <div class="flex flex-wrap items-center gap-4">
@@ -227,7 +228,5 @@
         {/each}
     </GdList>
 
-    {#if data.records.length === data.limit}
-        <p class="text-center text-ink-200">Showing the first {data.limit} records.</p>
-    {/if}
+    <Pagination current={data.page} count={data.pages} anchor="records" />
 {/if}

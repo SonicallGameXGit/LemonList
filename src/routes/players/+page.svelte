@@ -63,7 +63,7 @@
                     <p class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 gd-title text-lg">
                         <span class="flex items-center gap-2" title="Points">
                             {formatPoints(entry.points)}
-                            <Sprite name="star" class="h-6" />
+                            <Sprite name="diamond" class="h-6" />
                         </span>
                         <span class="flex items-center gap-2" title="Completions">
                             {entry.completions}

@@ -10,6 +10,8 @@
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import LevelRow from '#lib/components/LevelRow.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
     import RecordStatusBadge from '#lib/components/RecordStatusBadge.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
@@ -44,7 +46,7 @@
                     </span>
                     <span class="flex items-center gap-2">
                         {formatPoints(data.stats.points)}
-                        <Sprite name="star" class="h-7" label="Points" />
+                        <Sprite name="diamond" class="h-7" label="Points" />
                     </span>
                     <span class="flex items-center gap-2">
                         {data.stats.completions}
@@ -178,46 +180,61 @@
                 {#if data.submissions.length === 0}
                     <div class="gd-dark mt-5 p-8 text-center text-ink-200">No submissions yet.</div>
                 {:else}
-                    <GdList>
+                    <GdList id="submissions">
                         {#each data.submissions as record (record.id)}
-                            <li class="flex items-center gap-4 px-5 py-3">
-                                <div class="min-w-0 flex-1">
-                                    <a
-                                        href={resolve('/levels/[id]', {
-                                            id: String(record.level.id),
-                                        })}
-                                        class="block truncate gd-title text-2xl"
-                                    >
-                                        {record.level.name}
-                                    </a>
-                                    <p class="text-base text-black/55">
-                                        #{record.level.position} · {formatDate(record.submittedAt)}
+                            <LevelRow level={record.level}>
+                                {#snippet details()}
+                                    <p class="flex flex-wrap items-center gap-x-5 gap-y-1">
+                                        <span
+                                            class={[
+                                                'gd-title text-2xl',
+                                                record.progress === 100
+                                                    ? 'text-gd-lime'
+                                                    : 'text-white',
+                                            ]}
+                                        >
+                                            {record.progress}%
+                                        </span>
+                                        <RecordStatusBadge status={record.status} />
                                     </p>
-                                </div>
-                                <span class="w-16 text-right gd-title text-2xl">
-                                    {record.progress}%
-                                </span>
-                                <span class="w-36 text-right">
-                                    <RecordStatusBadge status={record.status} />
-                                </span>
-                                <div class="w-10 shrink-0">
-                                    {#if record.status === RecordStatus.Pending}
-                                        <form method="POST" action="?/withdraw" use:enhance>
-                                            <input type="hidden" name="record" value={record.id} />
-                                            <button
-                                                type="submit"
-                                                class="gd-press"
-                                                title="Withdraw"
-                                                aria-label="Withdraw the record"
-                                            >
-                                                <img src={sprite('x')} alt="" class="h-10" />
-                                            </button>
-                                        </form>
-                                    {/if}
-                                </div>
-                            </li>
+                                    <p class="text-base text-black/55">
+                                        Sent {formatDate(record.submittedAt)}
+                                    </p>
+                                {/snippet}
+                                {#snippet actions()}
+                                    <div class="flex items-center gap-3">
+                                        {#if record.status === RecordStatus.Pending}
+                                            <form method="POST" action="?/withdraw" use:enhance>
+                                                <input
+                                                    type="hidden"
+                                                    name="record"
+                                                    value={record.id}
+                                                />
+                                                <button
+                                                    type="submit"
+                                                    class="gd-press"
+                                                    title="Withdraw"
+                                                    aria-label="Withdraw the record"
+                                                >
+                                                    <img src={sprite('x')} alt="" class="h-10" />
+                                                </button>
+                                            </form>
+                                        {/if}
+                                        <GdButton
+                                            href={resolve('/levels/[id]', {
+                                                id: String(record.level.id),
+                                            })}
+                                            white
+                                        >
+                                            View
+                                        </GdButton>
+                                    </div>
+                                {/snippet}
+                            </LevelRow>
                         {/each}
                     </GdList>
+
+                    <Pagination current={data.page} count={data.pages} anchor="submissions" />
                 {/if}
             </section>
 

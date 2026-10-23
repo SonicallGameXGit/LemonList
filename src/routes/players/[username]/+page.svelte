@@ -49,7 +49,7 @@
         </div>
         <div class="flex items-center gap-2.5">
             <dd>{formatPoints(profile.points)}</dd>
-            <dt><Sprite name="star" class="h-9" label="Points" /></dt>
+            <dt><Sprite name="diamond" class="h-9" label="Points" /></dt>
         </div>
         <div class="flex items-center gap-2.5">
             <dd>{profile.completions}</dd>

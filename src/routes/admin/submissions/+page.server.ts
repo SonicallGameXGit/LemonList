@@ -3,10 +3,11 @@ import { RecordStatus } from '#lib/list.ts'
 import { requireAdmin } from '#lib/server/access.ts'
 import { attempt, id, parseForm } from '#lib/server/forms.ts'
 import { rejectLevelSubmission } from '#lib/server/list-actions.ts'
-import { getReviewSubmissions } from '#lib/server/list.ts'
+import { countReviewSubmissions, getReviewSubmissions } from '#lib/server/list.ts'
+import { paginate } from '#lib/pagination.ts'
 import type { Actions, PageServerLoad } from './$types'
 
-const REVIEW_LIMIT = 200
+const PAGE_SIZE = 25
 
 function statusParam(value: string | null) {
     const result = v.safeParse(v.enum(RecordStatus), value)
@@ -16,11 +17,13 @@ function statusParam(value: string | null) {
 
 export const load: PageServerLoad = ({ url }) => {
     const status = statusParam(url.searchParams.get('status'))
+    const pages = paginate(url, countReviewSubmissions(status), PAGE_SIZE)
 
     return {
         status,
-        submissions: getReviewSubmissions(status, REVIEW_LIMIT),
-        limit: REVIEW_LIMIT,
+        submissions: getReviewSubmissions(status, PAGE_SIZE, pages.offset),
+        page: pages.page,
+        pages: pages.pages,
     }
 }
 

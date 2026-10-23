@@ -105,6 +105,11 @@ export type LevelRecord = {
     status: RecordStatus
 }
 
+// A record on the dashboard of its player, shown like the level on the list
+export type PlayerSubmission = Omit<LevelRecord, 'level'> & {
+    level: Level
+}
+
 // A submission with everything the admins need to review it
 export type ReviewRecord = LevelRecord & {
     rawFootageUrl: string | null

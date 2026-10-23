@@ -84,7 +84,7 @@
             {#if level.position !== null}
                 <p class="flex items-center gap-2 gd-title text-2xl md:justify-center">
                     {formatPoints(level.points)}
-                    <Sprite name="star" class="h-7" />
+                    <Sprite name="diamond" class="h-7" />
                 </p>
             {/if}
         </div>
@@ -114,7 +114,7 @@
             {level.recordsCount}
         </li>
         <li class="flex items-center gap-3" title="Engagement">
-            <Sprite name="like" class="h-9" />
+            <Sprite name="star" class="h-9" />
             {level.engagement === null ? '-' : formatEngagement(level.engagement)}
         </li>
         <li class="flex items-center gap-3" title="Added">

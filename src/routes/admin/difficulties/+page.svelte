@@ -1,19 +1,23 @@
 <script lang="ts">
     import { deserialize, enhance } from '$app/forms'
     import { refreshAll } from '$app/navigation'
+    import { page } from '$app/state'
     import { sprite } from '#lib/gd.ts'
     import { DIFFICULTY_NAME_MAX_LENGTH } from '#lib/list-rules.ts'
     import type { AdminDifficulty } from '#lib/list.ts'
+    import { paginate } from '#lib/pagination.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
     import DifficultyFace from '#lib/components/DifficultyFace.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import Pagination from '#lib/components/Pagination.svelte'
     import type { PageProps } from './$types'
 
     let { data, form }: PageProps = $props()
 
     const faceTypes = 'image/png, image/jpeg, image/webp'
+    const PAGE_SIZE = 25
 
     let adding = $state(false)
     // Id of the difficulty being edited or about to be deleted
@@ -24,6 +28,9 @@
     let ordered: AdminDifficulty[] = $derived(data.difficulties)
     let moving = $state(false)
     let moveError: string | null = $state(null)
+
+    const pages = $derived(paginate(page.url, ordered.length, PAGE_SIZE))
+    const shown = $derived(ordered.slice(pages.offset, pages.offset + PAGE_SIZE))
 
     async function move(difficulty: AdminDifficulty, position: number) {
         if (moving || position < 1 || position > ordered.length) {
@@ -69,11 +76,12 @@
         moving = false
     }
 
+    // Indexes of the current page
     function sorted(from: number, to: number) {
-        const difficulty = ordered[from]
+        const difficulty = ordered[pages.offset + from]
 
         if (difficulty !== undefined) {
-            move(difficulty, to + 1)
+            move(difficulty, pages.offset + to + 1)
         }
     }
 
@@ -163,7 +171,8 @@
 <div class="gd-dark mt-8 mb-4 p-5 text-center">
     <p>
         From the easiest to the hardest. Drag difficulties by the arrows on the left to move them,
-        or focus the arrows and use the arrow keys. Levels of a deleted difficulty become N/A.
+        or focus the arrows and use the arrow keys (they also move a difficulty past the end of the
+        page). Levels of a deleted difficulty become N/A.
     </p>
 </div>
 
@@ -187,8 +196,11 @@
         </p>
     </div>
 {:else}
-    <GdList attach={sortable({ handle: '.drag-handle', disabled: moving, onsort: sorted })}>
-        {#each ordered as difficulty (difficulty.id)}
+    <GdList
+        id="difficulties"
+        attach={sortable({ handle: '.drag-handle', disabled: moving, onsort: sorted })}
+    >
+        {#each shown as difficulty (difficulty.id)}
             <li class="flex flex-col gap-4 px-4 py-4 sm:px-6">
                 <div class="flex flex-wrap items-center gap-4 sm:flex-nowrap sm:gap-6">
                     <!-- Up and down arrows, like the move buttons of the editor -->
@@ -319,4 +331,6 @@
             </li>
         {/each}
     </GdList>
+
+    <Pagination current={pages.page} count={pages.pages} anchor="difficulties" />
 {/if}

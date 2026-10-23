@@ -7,6 +7,7 @@ import {
     count,
     desc,
     eq,
+    inArray,
     isNotNull,
     isNull,
     or,
@@ -24,7 +25,7 @@ import {
     user,
 } from '#lib/server/db/schema.ts'
 import { avatarUrl, levelThumbnailUrl, mediaUrl } from '#lib/server/media.ts'
-import { isAdminRole } from '#lib/auth-rules.ts'
+import { ADMIN_ROLE, isAdminRole } from '#lib/auth-rules.ts'
 import {
     ENGAGEMENT_MAX,
     PlayerFilter,
@@ -38,6 +39,7 @@ import {
     type LevelRef,
     type LevelSubmission,
     type ListChange,
+    type PlayerSubmission,
     type ListDifficulty,
     type PlayerRef,
     type ReviewRecord,
@@ -591,12 +593,40 @@ export function getPlayerProfile(playerId: string, username: string) {
     }
 }
 
-// Records submitted by the player, with every status
-export function getSubmissions(playerId: string) {
-    return selectRecords(eq(record.playerId, playerId))
-        .orderBy(desc(record.submittedAt))
+export function countSubmissions(playerId: string) {
+    const row = db
+        .select({ count: count() })
+        .from(record)
+        .where(eq(record.playerId, playerId))
+        .get()
+
+    return row?.count ?? 0
+}
+
+// Records submitted by the player with every status, the newest first, with their whole levels
+export function getSubmissions(playerId: string, limit: number, offset: number) {
+    const rows = selectRecords(eq(record.playerId, playerId))
+        .orderBy(desc(record.submittedAt), desc(record.id))
+        .limit(limit)
+        .offset(offset)
         .all()
-        .map(toLevelRecord)
+
+    if (rows.length === 0) {
+        return []
+    }
+
+    const levels = selectLevels(
+        inArray(
+            level.id,
+            rows.map((row) => row.level.id),
+        ),
+    )
+
+    return rows.flatMap((row): PlayerSubmission[] => {
+        const submitted = levels.find((other) => other.id === row.level.id)
+
+        return submitted === undefined ? [] : [{ ...toLevelRecord(row), level: submitted }]
+    })
 }
 
 // Beaten levels the player hasn't rated yet
@@ -722,19 +752,27 @@ export function hasPendingRecord(levelId: number, playerId: string) {
 
 // Admin tools
 
-export function countPendingRecords() {
+export function countReviewRecords(status: RecordStatus) {
     const row = db
         .select({ count: count() })
         .from(record)
         .innerJoin(user, eq(user.id, record.playerId))
-        .where(and(eq(record.status, RecordStatus.Pending), visiblePlayer()))
+        .where(and(eq(record.status, status), visiblePlayer()))
         .get()
 
     return row?.count ?? 0
 }
 
+export function countPendingRecords() {
+    return countReviewRecords(RecordStatus.Pending)
+}
+
 // The review queue starts from the oldest submission, the other statuses from the newest
-export function getReviewRecords(status: RecordStatus, limit: number): ReviewRecord[] {
+export function getReviewRecords(
+    status: RecordStatus,
+    limit: number,
+    offset: number,
+): ReviewRecord[] {
     return db
         .select({
             id: record.id,
@@ -755,8 +793,10 @@ export function getReviewRecords(status: RecordStatus, limit: number): ReviewRec
         .where(and(eq(record.status, status), visiblePlayer()))
         .orderBy(
             status === RecordStatus.Pending ? asc(record.submittedAt) : desc(record.submittedAt),
+            desc(record.id),
         )
         .limit(limit)
+        .offset(offset)
         .all()
         .map((row) => ({
             id: row.id,
@@ -773,8 +813,8 @@ export function getReviewRecords(status: RecordStatus, limit: number): ReviewRec
         }))
 }
 
-// Every account, including banned ones and the ones without a verified email
-export function getAdminPlayers(filter: PlayerFilter, search: string, limit: number) {
+// Accounts of a tab of the admin players page that match the search
+function adminPlayersWhere(filter: PlayerFilter, search: string) {
     const filters: Record<PlayerFilter, SQL | undefined> = {
         [PlayerFilter.Unverified]: and(
             eq(user.accountVerified, false),
@@ -782,7 +822,8 @@ export function getAdminPlayers(filter: PlayerFilter, search: string, limit: num
             or(isNull(user.banned), eq(user.banned, false)),
         ),
         [PlayerFilter.All]: undefined,
-        [PlayerFilter.Admins]: sql`${user.role} like '%admin%'`,
+        // Like isAdminRole: one of the comma separated roles
+        [PlayerFilter.Admins]: sql`',' || replace(${user.role}, ' ', '') || ',' like ${'%,' + ADMIN_ROLE + ',%'}`,
         [PlayerFilter.Banned]: eq(user.banned, true),
     }
     const pattern = '%' + search.replace(/[\\%_]/g, (char) => '\\' + char) + '%'
@@ -795,6 +836,23 @@ export function getAdminPlayers(filter: PlayerFilter, search: string, limit: num
                   sql`${user.email} like ${pattern} escape '\\'`,
               )
 
+    return and(filters[filter], matches)
+}
+
+export function countAdminPlayers(filter: PlayerFilter, search: string) {
+    return (
+        db.select({ count: count() }).from(user).where(adminPlayersWhere(filter, search)).get()
+            ?.count ?? 0
+    )
+}
+
+// Every account, including banned ones and the ones without a verified email
+export function getAdminPlayers(
+    filter: PlayerFilter,
+    search: string,
+    limit: number,
+    offset: number,
+) {
     return db
         .select({
             id: user.id,
@@ -811,11 +869,11 @@ export function getAdminPlayers(filter: PlayerFilter, search: string, limit: num
             createdAt: user.createdAt,
         })
         .from(user)
-        .where(and(filters[filter], matches))
-        .orderBy(desc(user.createdAt))
+        .where(adminPlayersWhere(filter, search))
+        .orderBy(desc(user.createdAt), asc(user.id))
         .limit(limit)
+        .offset(offset)
         .all()
-        .filter((row) => filter !== PlayerFilter.Admins || isAdminRole(row.role))
         .map((row): AdminPlayer => ({
             id: row.id,
             username: row.username,
@@ -952,26 +1010,32 @@ export function getLevelSubmissions(playerId: string) {
         .map(toLevelSubmission)
 }
 
-export function countPendingSubmissions() {
+export function countReviewSubmissions(status: RecordStatus) {
     const row = db
         .select({ count: count() })
         .from(levelSubmission)
         .innerJoin(user, eq(user.id, levelSubmission.playerId))
-        .where(and(eq(levelSubmission.status, RecordStatus.Pending), visiblePlayer()))
+        .where(and(eq(levelSubmission.status, status), visiblePlayer()))
         .get()
 
     return row?.count ?? 0
 }
 
+export function countPendingSubmissions() {
+    return countReviewSubmissions(RecordStatus.Pending)
+}
+
 // The review queue starts from the oldest submission, the other statuses from the newest
-export function getReviewSubmissions(status: RecordStatus, limit: number) {
+export function getReviewSubmissions(status: RecordStatus, limit: number, offset: number) {
     return selectSubmissions(eq(levelSubmission.status, status))
         .orderBy(
             status === RecordStatus.Pending
                 ? asc(levelSubmission.submittedAt)
                 : desc(levelSubmission.submittedAt),
+            desc(levelSubmission.id),
         )
         .limit(limit)
+        .offset(offset)
         .all()
         .map(toReviewSubmission)
 }

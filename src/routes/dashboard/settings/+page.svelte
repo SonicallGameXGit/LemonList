@@ -156,7 +156,7 @@
 <h1 class="mb-12 gd-gold text-center text-5xl sm:text-6xl">Settings</h1>
 
 {#if data.user !== null}
-    <div class="flex flex-col gap-14">
+    <div class="mx-auto flex max-w-3xl flex-col gap-14">
         {@render group('Profile', profile)}
         {@render group('Sign-in', signIn)}
         {@render group('Danger zone', danger)}
@@ -164,7 +164,7 @@
 {/if}
 
 {#snippet group(title: string, content: Snippet)}
-    <section class="grid gap-5 md:grid-cols-[14rem_1fr]">
+    <section class="flex flex-col gap-5">
         <h2 class="gd-title text-3xl">{title}</h2>
         <div class="flex flex-col gap-5">{@render content()}</div>
     </section>
