@@ -11,6 +11,7 @@
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import SearchBox from '#lib/components/SearchBox.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
@@ -95,21 +96,15 @@
     <title>Players - Admin - LemonList</title>
 </svelte:head>
 
-<form method="GET" class="gd-dark mb-6 flex items-center gap-3 p-4">
-    <Sprite name="magnify" class="h-14" />
+<SearchBox
+    label="Search players"
+    placeholder="Username or email..."
+    name="q"
+    value={data.search}
+    class="mb-6"
+>
     <input type="hidden" name="filter" value={data.filter} />
-    <label class="flex-1">
-        <span class="sr-only">Search players</span>
-        <input
-            type="search"
-            name="q"
-            class="gd-input"
-            placeholder="Username or email..."
-            value={data.search}
-        />
-    </label>
-    <GdButton type="submit" size="sm" color="cyan">Search</GdButton>
-</form>
+</SearchBox>
 
 <nav class="mb-6 flex flex-wrap justify-center gap-x-8 gap-y-3" aria-label="Players filter">
     {#each filters as tab (tab.filter)}

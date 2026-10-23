@@ -105,7 +105,10 @@
         {/if}
     </div>
 
-    <ul class="flex flex-col gap-4 gd-title text-2xl">
+    <!-- One row under the preview on phones, the date wraps below when it doesn't fit -->
+    <ul
+        class="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 gd-title text-2xl md:flex-col md:items-start"
+    >
         <li class="flex items-center gap-3" title="Records">
             <Sprite name="check" class="h-9" />
             {level.recordsCount}

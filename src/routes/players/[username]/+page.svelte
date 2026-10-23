@@ -82,28 +82,44 @@
         {:else}
             <GdList>
                 {#each profile.completed as record (record.id)}
-                    <li class="flex items-center gap-4 px-5 py-3">
-                        <span class="w-14 text-center gd-title text-xl text-gd-yellow">
-                            #{record.level.position}
-                        </span>
-                        <a
-                            href={resolve('/levels/[id]', { id: String(record.level.id) })}
-                            class="min-w-0 flex-1 truncate gd-title text-2xl"
-                        >
-                            {record.level.name}
+                    {@const href = resolve('/levels/[id]', { id: String(record.level.id) })}
+                    <!-- Phones show the preview first and let the name wrap -->
+                    <li class="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-3">
+                        <a {href} class="sm:hidden" tabindex="-1">
+                            <img
+                                src={record.level.thumbnailUrl}
+                                alt=""
+                                loading="lazy"
+                                class="aspect-video w-full rounded-lg border-[3px] border-black object-cover"
+                            />
                         </a>
-                        <span class="hidden text-base text-black/55 sm:inline">
-                            {formatDate(record.submittedAt)}
-                        </span>
-                        <a
-                            href={record.videoUrl}
-                            target="_blank"
-                            rel="external noopener noreferrer"
-                            class="gd-press"
-                            aria-label="Watch the video"
-                        >
-                            <img src={sprite('youtube')} alt="" class="h-11" />
-                        </a>
+                        <div class="flex items-center gap-4">
+                            <span class="w-14 shrink-0 text-center gd-title text-xl text-gd-yellow">
+                                #{record.level.position}
+                            </span>
+                            <div
+                                class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4"
+                            >
+                                <a
+                                    {href}
+                                    class="min-w-0 gd-title text-2xl break-words sm:flex-1 sm:truncate"
+                                >
+                                    {record.level.name}
+                                </a>
+                                <span class="text-base text-black/55">
+                                    {formatDate(record.submittedAt)}
+                                </span>
+                            </div>
+                            <a
+                                href={record.videoUrl}
+                                target="_blank"
+                                rel="external noopener noreferrer"
+                                class="shrink-0 gd-press"
+                                aria-label="Watch the video"
+                            >
+                                <img src={sprite('youtube')} alt="" class="h-11" />
+                            </a>
+                        </div>
                     </li>
                 {/each}
             </GdList>

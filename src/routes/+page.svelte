@@ -46,7 +46,7 @@
     {:else}
         <GdList>
             {#each data.topLevels as level (level.id)}
-                <LevelRow {level} compact />
+                <LevelRow {level} />
             {/each}
         </GdList>
         <div class="text-center">

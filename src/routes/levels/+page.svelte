@@ -6,13 +6,14 @@
     import { applyDifficultyChanges, moveDifficultyChanges, sendMove } from '#lib/move-level.ts'
     import { sortable } from '#lib/sortable.ts'
     import Alert from '#lib/components/Alert.svelte'
+    import CollapsibleRows from '#lib/components/CollapsibleRows.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import LevelRow from '#lib/components/LevelRow.svelte'
     import ListLegend from '#lib/components/ListLegend.svelte'
     import MoveDialog from '#lib/components/MoveDialog.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
-    import Sprite from '#lib/components/Sprite.svelte'
+    import SearchBox from '#lib/components/SearchBox.svelte'
     import type { PageProps } from './$types'
 
     let { data }: PageProps = $props()
@@ -168,17 +169,13 @@
     {/if}
 {/if}
 
-<div class="gd-dark mb-4 flex flex-col gap-5 p-5">
-    <label class="flex items-center gap-3">
-        <Sprite name="magnify" class="h-14" />
-        <span class="sr-only">Search levels</span>
-        <input type="search" class="gd-input" placeholder="Search levels..." bind:value={query} />
-    </label>
-    {#if difficultyOptions.length > 1}
-        <div
+<SearchBox label="Search levels" placeholder="Search levels..." class="mb-4" bind:value={query} />
+
+{#if difficultyOptions.length > 1}
+    <div class="gd-dark mb-4 p-5">
+        <CollapsibleRows
+            label="Difficulty"
             class="flex flex-wrap justify-center gap-x-2 gap-y-3 sm:gap-x-3"
-            role="group"
-            aria-label="Difficulty"
         >
             {#each difficultyOptions as option (option.value)}
                 <button
@@ -201,9 +198,9 @@
                     >
                 </button>
             {/each}
-        </div>
-    {/if}
-</div>
+        </CollapsibleRows>
+    </div>
+{/if}
 
 {#if data.levels.length === 0}
     <div class="gd-dark mt-6 p-12 text-center">

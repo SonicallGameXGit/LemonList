@@ -4,6 +4,7 @@
     import Avatar from '#lib/components/Avatar.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
+    import SearchBox from '#lib/components/SearchBox.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
@@ -26,11 +27,7 @@
 
 <PageTitle title="Leaderboard" subtitle="Players ranked by the points of the demons they beat." />
 
-<label class="gd-dark mb-4 flex items-center gap-3 p-4">
-    <Sprite name="magnify" class="h-14" />
-    <span class="sr-only">Search players</span>
-    <input type="search" class="gd-input" placeholder="Search players..." bind:value={query} />
-</label>
+<SearchBox label="Search players" placeholder="Search players..." class="mb-4" bind:value={query} />
 
 {#if data.leaderboard.length === 0}
     <div class="gd-dark mt-6 p-12 text-center">
