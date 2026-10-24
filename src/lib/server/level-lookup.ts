@@ -1,19 +1,29 @@
 // Lookups of the level form (#lib/level-lookup.ts) from the level ID: the Geometry Dash servers,
-// the Geometry Dash Demon Ladder (gdladder.com) and the in-game thumbnails (levelthumbs.prevter.me)
-import { eq, sql } from 'drizzle-orm'
+// the Geometry Dash Demon Ladder (gdladder.com) and the in-game thumbnails (levelthumbs.prevter.me).
+// Players who don't know the ID search the level by its name first
+import { eq, inArray, sql } from 'drizzle-orm'
 import * as v from 'valibot'
 import { db } from '#lib/server/db/index.ts'
 import { difficulty, level } from '#lib/server/db/schema.ts'
 import { ActionError } from '#lib/server/forms.ts'
-import { checkLookupCooldown, fetchGameLevel } from '#lib/server/gd-servers.ts'
+import {
+    checkLookupCooldown,
+    fetchGameLevel,
+    searchGameLevels,
+    type GameLevel,
+} from '#lib/server/gd-servers.ts'
 import { MediaKind, imageRules } from '#lib/server/media.ts'
 import { dibDifficultyForTier } from '#lib/dib.ts'
-import type { LevelLookup } from '#lib/level-lookup.ts'
+import type { LevelLookup, LevelSearchResult } from '#lib/level-lookup.ts'
 
 const LADDER_URL = 'https://gdladder.com/api/levels/'
 const THUMBNAIL_URL = 'https://levelthumbs.prevter.me/thumbnail/'
 
 const TIMEOUT = 10_000
+
+// Levels of the last search of every player. Picking one of them looks it up right away, without
+// the cooldown: the servers already sent it, only the ladder and the thumbnails are asked
+const lastSearches = new Map<string, Map<number, GameLevel>>()
 
 // Levels that aren't on the ladder give an empty object
 const ladderSchema = v.object({
@@ -107,10 +117,17 @@ function valueOf<T>(result: PromiseSettledResult<T>, problem: string, problems: 
 }
 
 export async function lookUpLevel(playerId: string, gdId: number): Promise<LevelLookup> {
-    checkLookupCooldown(playerId)
+    // Every searched level can be picked once without waiting
+    const searched = lastSearches.get(playerId)?.get(gdId)
+
+    if (searched === undefined) {
+        checkLookupCooldown(playerId)
+    } else {
+        lastSearches.get(playerId)?.delete(gdId)
+    }
 
     const [gameResult, tierResult, thumbnailResult] = await Promise.allSettled([
-        fetchGameLevel(gdId),
+        searched === undefined ? fetchGameLevel(gdId) : Promise.resolve(searched),
         fetchLadderTier(gdId),
         hasThumbnail(gdId),
     ])
@@ -144,4 +161,43 @@ export async function lookUpLevel(playerId: string, gdId: number): Promise<Level
         existing: existing ?? null,
         problems,
     }
+}
+
+// The first online levels with this name, to pick the one to look up
+export async function searchLevels(playerId: string, query: string): Promise<LevelSearchResult[]> {
+    checkLookupCooldown(playerId)
+
+    const found = await searchGameLevels(query)
+    const onList =
+        found.length === 0
+            ? []
+            : db
+                  .select({ id: level.id, name: level.name, gdId: level.gdId })
+                  .from(level)
+                  .where(
+                      inArray(
+                          level.gdId,
+                          found.map((game) => game.gdId),
+                      ),
+                  )
+                  .all()
+
+    lastSearches.set(
+        playerId,
+        new Map(
+            found.map((game) => [
+                game.gdId,
+                { name: game.name, creator: game.creator, gameDifficulty: game.gameDifficulty },
+            ]),
+        ),
+    )
+
+    return found.map((game) => {
+        const existing = onList.find((listed) => listed.gdId === game.gdId)
+
+        return {
+            ...game,
+            existing: existing === undefined ? null : { id: existing.id, name: existing.name },
+        }
+    })
 }

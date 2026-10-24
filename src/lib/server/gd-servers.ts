@@ -1,5 +1,5 @@
 // Requests to the Geometry Dash servers (the same ones the game makes), to copy the icon kit of a
-// game account into the garage and to fill the level form from the level ID
+// game account into the garage and to fill the level form from the level ID or name
 import { ActionError } from '#lib/server/forms.ts'
 import { GameDifficulty } from '#lib/list.ts'
 import {
@@ -202,20 +202,49 @@ export type GameLevel = {
     gameDifficulty: GameDifficulty
 }
 
+// Levels a search shows, the same ones the search screen of the game shows first
+const SEARCH_RESULTS = 5
+
+// Levels of a levels response with their IDs, in the order the servers sent them
+function parseLevels(response: string) {
+    const [levelsSection, creatorsSection] = response.split('#')
+    // Creators are the second section, 'playerID:name:accountID' each
+    const creators = (creatorsSection ?? '').split('|').map((entry) => entry.split(':'))
+    const levels: (GameLevel & { gdId: number })[] = []
+
+    for (const entry of levelsSection.split('|')) {
+        const level = parseFields(entry)
+        const gdId = numberOf(level, '1')
+        const name = level.get('2')
+
+        if (gdId === null || name === undefined || name === '') {
+            continue
+        }
+
+        const playerId = level.get('6')
+        const creator = creators.find((creator) => creator[0] === playerId)?.[1] ?? ''
+
+        levels.push({ gdId, name, creator, gameDifficulty: gameDifficultyOf(level) })
+    }
+
+    return levels
+}
+
 // A level of the online levels by its ID, null if there is no such level (or it isn't uploaded)
 export async function fetchGameLevel(gdId: number): Promise<GameLevel | null> {
-    const response = await request('getGJLevels21.php', { str: String(gdId), type: '0' })
-    const level = parseObject(response)
-    const name = level.get('2')
+    const levels = parseLevels(await request('getGJLevels21.php', { str: String(gdId), type: '0' }))
+    const level = levels.find((level) => level.gdId === gdId)
 
-    if (numberOf(level, '1') !== gdId || name === undefined || name === '') {
+    if (level === undefined) {
         return null
     }
 
-    // Creators are the second section, 'playerID:name:accountID' each
-    const playerId = level.get('6')
-    const creators = (response.split('#')[1] ?? '').split('|').map((entry) => entry.split(':'))
-    const creator = creators.find((entry) => entry[0] === playerId)?.[1] ?? ''
+    return { name: level.name, creator: level.creator, gameDifficulty: level.gameDifficulty }
+}
 
-    return { name, creator, gameDifficulty: gameDifficultyOf(level) }
+// The first online levels the search of the game finds by the name
+export async function searchGameLevels(query: string) {
+    const levels = parseLevels(await request('getGJLevels21.php', { str: query, type: '0' }))
+
+    return levels.slice(0, SEARCH_RESULTS)
 }

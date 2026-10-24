@@ -3,7 +3,12 @@
     import { enhance } from '$app/forms'
     import { resolve } from '$app/paths'
     import { gameDifficultyRef, naDifficultyRef } from '#lib/gd.ts'
-    import { lookupLevel, type LevelLookup } from '#lib/level-lookup.ts'
+    import {
+        lookupLevel,
+        searchLevels,
+        type LevelLookup,
+        type LevelSearchResult,
+    } from '#lib/level-lookup.ts'
     import {
         CREATOR_MAX_LENGTH,
         GD_ID_MAX,
@@ -70,8 +75,9 @@
         ...difficulties.map((difficulty) => ({ value: String(difficulty.id), difficulty })),
     ])
 
-    // Fields the lookup can fill in, they start from the level and go back to it on a reset
-    let gdId: number | null = $derived(level === null ? null : level.gdId)
+    // Fields the lookup can fill in, they start from the level and go back to it on a reset. The ID
+    // field also takes a name to search, picking a found level puts its ID there
+    let query = $derived(level === null ? '' : String(level.gdId))
     let name = $derived(level === null ? '' : level.name)
     let creator = $derived(level === null ? '' : level.creator)
     let gameDifficulty: string = $derived(level === null ? '' : level.gameDifficulty)
@@ -84,6 +90,14 @@
     let lookupError: string | null = $state(null)
     let lookingUp = $state(false)
     let saving = $state(false)
+
+    // Levels found by the name, null before a search (and once the name changes)
+    let searchResults: LevelSearchResult[] | null = $state(null)
+    let searchOpen = $state(false)
+    let searchBox: HTMLElement | undefined = $state()
+    let queryInput: HTMLInputElement | undefined = $state()
+
+    const isGdId = $derived(/^\d+$/.test(query.trim()))
 
     // A level from the Future List can also go right below the last one
     const maxPosition = $derived(
@@ -99,9 +113,102 @@
         return level === null ? null : level.thumbnailUrl
     })
 
-    async function fetchLevel() {
-        if (gdId === null || !Number.isInteger(gdId) || gdId < 1 || gdId > GD_ID_MAX) {
-            lookupError = 'Enter the level ID first'
+    // An ID is looked up, anything else is searched by the name
+    function findLevel() {
+        const text = query.trim()
+
+        if (text === '') {
+            lookupError = 'Enter the level ID or name first'
+            return
+        }
+
+        if (isGdId) {
+            fetchLevel(Number(text))
+        } else {
+            searchLevel(text)
+        }
+    }
+
+    async function searchLevel(text: string) {
+        lookingUp = true
+        lookupError = null
+
+        const result = await searchLevels(text)
+
+        lookingUp = false
+        lookupError = result.error
+        searchResults = result.levels
+        searchOpen = result.levels !== null
+    }
+
+    // Keyboard picks go back to the field, taps don't (it would open the keyboard of the phone)
+    function pickLevel(found: LevelSearchResult, refocus: boolean) {
+        query = String(found.gdId)
+        searchResults = null
+        searchOpen = false
+
+        if (refocus) {
+            queryInput?.focus()
+        }
+
+        fetchLevel(found.gdId)
+    }
+
+    // Clicks and focus outside the search close the found levels
+    function closeSearchOutside(event: Event) {
+        if (
+            searchOpen &&
+            searchBox !== undefined &&
+            event.target instanceof Node &&
+            !searchBox.contains(event.target)
+        ) {
+            searchOpen = false
+        }
+    }
+
+    // The arrow keys go through the found levels, Escape goes back to the field
+    function moveInResults(event: KeyboardEvent) {
+        if (searchBox === undefined) {
+            return
+        }
+
+        const buttons = [...searchBox.querySelectorAll<HTMLButtonElement>('[data-search-result]')]
+        const index = buttons.findIndex((button) => button === document.activeElement)
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            // Closed found levels open first
+            if (!searchOpen && searchResults !== null) {
+                event.preventDefault()
+                searchOpen = true
+                return
+            }
+
+            if (buttons.length === 0) {
+                return
+            }
+
+            event.preventDefault()
+
+            const step = event.key === 'ArrowDown' ? 1 : -1
+            const next = index === -1 ? (step === 1 ? 0 : buttons.length - 1) : index + step
+
+            if (next < 0 || next >= buttons.length) {
+                queryInput?.focus()
+            } else {
+                buttons[next].focus()
+            }
+        }
+
+        if (event.key === 'Escape' && searchOpen) {
+            event.preventDefault()
+            searchOpen = false
+            queryInput?.focus()
+        }
+    }
+
+    async function fetchLevel(gdId: number) {
+        if (!Number.isInteger(gdId) || gdId < 1 || gdId > GD_ID_MAX) {
+            lookupError = 'Enter a level ID from 1 to ' + GD_ID_MAX
             return
         }
 
@@ -137,7 +244,7 @@
     }
 
     function reset() {
-        gdId = level === null ? null : level.gdId
+        query = level === null ? '' : String(level.gdId)
         name = level === null ? '' : level.name
         creator = level === null ? '' : level.creator
         gameDifficulty = level === null ? '' : level.gameDifficulty
@@ -146,8 +253,12 @@
         gameThumbnail = false
         lookup = null
         lookupError = null
+        searchResults = null
+        searchOpen = false
     }
 </script>
+
+<svelte:window onpointerdown={closeSearchOutside} onfocusin={closeSearchOutside} />
 
 <form
     method="POST"
@@ -174,30 +285,52 @@
 >
     <div class="flex flex-col gap-3">
         <div class="flex items-end gap-3">
-            <label class="gd-label flex-1">
-                Level ID
-                <input
-                    type="number"
-                    class="gd-input"
-                    name="gdId"
-                    required
-                    min="1"
-                    max={GD_ID_MAX}
-                    bind:value={gdId}
-                    onkeydown={(event) => {
-                        // Enter looks the level up instead of sending the form
-                        if (event.key === 'Enter') {
-                            event.preventDefault()
-                            fetchLevel()
-                        }
-                    }}
-                />
-            </label>
-            <GdButton color="cyan" disabled={lookingUp} onclick={fetchLevel}>
-                {lookingUp ? 'Fetching...' : 'Fetch'}
+            <div class="relative min-w-0 flex-1" bind:this={searchBox}>
+                <label class="gd-label">
+                    Level ID or name
+                    <input
+                        type="text"
+                        class="gd-input"
+                        name="gdId"
+                        required
+                        pattern="[0-9]+"
+                        title="Search the level by its name and pick it, or enter its ID"
+                        maxlength={LEVEL_NAME_MAX_LENGTH}
+                        autocomplete="off"
+                        enterkeyhint={isGdId ? 'go' : 'search'}
+                        bind:value={query}
+                        bind:this={queryInput}
+                        oninput={() => {
+                            // The found levels are for the old name
+                            searchResults = null
+                            searchOpen = false
+                        }}
+                        onfocus={() => (searchOpen = searchResults !== null)}
+                        onkeydown={(event) => {
+                            // Enter looks the level up instead of sending the form
+                            if (event.key === 'Enter') {
+                                event.preventDefault()
+                                findLevel()
+                            } else {
+                                moveInResults(event)
+                            }
+                        }}
+                    />
+                </label>
+                {#if searchOpen && searchResults !== null}
+                    {@render searchList(searchResults)}
+                {/if}
+            </div>
+            <GdButton color="cyan" disabled={lookingUp} onclick={findLevel}>
+                {#if lookingUp}
+                    {isGdId ? 'Fetching...' : 'Searching...'}
+                {:else}
+                    {isGdId ? 'Fetch' : 'Search'}
+                {/if}
             </GdButton>
         </div>
         <p class="text-base text-ink-200">
+            Don't know the ID? Search the level by its name and pick it from the online levels.
             Fetch fills in the name, creator and in-game difficulty from the Geometry Dash servers,
             the LemonList difficulty from the
             <a href="https://gdladder.com" target="_blank" rel="external noopener" class="gd-link"
@@ -412,6 +545,52 @@
         <GdButton type="submit" disabled={saving}>{saving ? 'Saving...' : submitLabel}</GdButton>
     </div>
 </form>
+
+<!-- Online levels found by the name, like the search screen of the game -->
+{#snippet searchList(found: LevelSearchResult[])}
+    <div
+        id="level-form-search"
+        class="absolute inset-x-0 top-full z-20 mt-2 overflow-hidden rounded-xl border-[3px] border-black bg-gd-row shadow-[0_6px_16px_rgb(0_0_0/0.5)]"
+    >
+        {#if found.length === 0}
+            <p class="px-4 py-3 text-lg">No online levels with this name.</p>
+        {:else}
+            <ul>
+                {#each found as result (result.gdId)}
+                    <li class="odd:bg-gd-row even:bg-gd-row-alt">
+                        <button
+                            type="button"
+                            class="flex min-h-14 w-full cursor-pointer items-center gap-3 px-3 py-2 text-left outline-none hover:bg-black/15 focus-visible:bg-black/25"
+                            data-search-result
+                            onclick={(event) => pickLevel(result, event.detail === 0)}
+                            onkeydown={moveInResults}
+                        >
+                            <img
+                                src={gameDifficultyRef(result.gameDifficulty).faceUrl}
+                                alt={gameDifficultyNames[result.gameDifficulty]}
+                                class="size-10 shrink-0 object-contain"
+                            />
+                            <span class="flex min-w-0 flex-1 flex-col">
+                                <span class="truncate gd-title text-lg">{result.name}</span>
+                                <span class="truncate text-base">
+                                    {#if result.creator !== ''}
+                                        <span class="gd-gold">by {result.creator}</span>
+                                    {/if}
+                                    <span class="font-sans text-ink-200">ID {result.gdId}</span>
+                                </span>
+                            </span>
+                            {#if result.existing !== null}
+                                <span class="shrink-0 gd-title text-sm text-gd-lime"
+                                    >On the list</span
+                                >
+                            {/if}
+                        </button>
+                    </li>
+                {/each}
+            </ul>
+        {/if}
+    </div>
+{/snippet}
 
 <!-- What the lookup found, it already filled in the fields -->
 {#snippet lookupReport(found: LevelLookup)}
