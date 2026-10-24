@@ -174,6 +174,49 @@ export const rating = sqliteTable(
     ],
 )
 
+// Skillsets players vote for on the levels they beat (Memory, Wave, Timings...), managed by the admins
+export const skillset = sqliteTable(
+    'skillset',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        name: text('name').notNull().unique(),
+        // What the skillset means, shown to the players who vote
+        description: text('description'),
+        // Media key of the icon, picked from the game sprites or uploaded
+        icon: text('icon').notNull(),
+        // Order of the skillsets starting from 1. Not unique, so skillsets can be shifted one by
+        // one inside a transaction
+        position: integer('position').notNull(),
+        createdAt: createdAt(),
+    },
+    (table) => [
+        index('skillset_position_idx').on(table.position),
+        check('skillset_position_check', sql`${table.position} >= 1`),
+    ],
+)
+
+// Skillsets a player chose for a level of the Main List they beat, a row per chosen skillset
+export const skillsetVote = sqliteTable(
+    'skillset_vote',
+    {
+        levelId: integer('level_id')
+            .notNull()
+            .references(() => level.id, { onDelete: 'cascade' }),
+        playerId: text('player_id')
+            .notNull()
+            .references(() => user.id, { onDelete: 'cascade' }),
+        skillsetId: integer('skillset_id')
+            .notNull()
+            .references(() => skillset.id, { onDelete: 'cascade' }),
+        createdAt: createdAt(),
+    },
+    (table) => [
+        primaryKey({ columns: [table.levelId, table.playerId, table.skillsetId] }),
+        index('skillsetVote_playerId_idx').on(table.playerId),
+        index('skillsetVote_skillsetId_idx').on(table.skillsetId),
+    ],
+)
+
 // History of the Main List
 export const listChange = sqliteTable(
     'list_change',

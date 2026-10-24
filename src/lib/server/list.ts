@@ -5,6 +5,7 @@ import {
     asc,
     avg,
     count,
+    countDistinct,
     desc,
     eq,
     inArray,
@@ -22,6 +23,8 @@ import {
     listChange,
     rating,
     record,
+    skillset,
+    skillsetVote,
     user,
 } from '#lib/server/db/schema.ts'
 import { avatarUrl, levelThumbnailUrl, mediaUrl } from '#lib/server/media.ts'
@@ -30,8 +33,10 @@ import {
     ENGAGEMENT_MAX,
     PlayerFilter,
     RecordStatus,
+    SKILLSET_SCORE_MAX,
     type AdminDifficulty,
     type AdminPlayer,
+    type AdminSkillset,
     type LeaderboardEntry,
     type Level,
     type LevelRecord,
@@ -44,6 +49,10 @@ import {
     type PlayerRef,
     type ReviewRecord,
     type ReviewSubmission,
+    type Skillset,
+    type SkillsetScore,
+    type SkillsetTags,
+    type LevelSkillsetScore,
 } from '#lib/list.ts'
 
 // List points of a level at the given position of the Main List
@@ -244,9 +253,16 @@ function selectLevels(where: SQL | undefined) {
         .all()
 
     const statsOf = levelStats(where)
+    const votes = skillsetVotes(where)
+    const skillsets = votes.size === 0 ? [] : getSkillsets()
 
     return rows.map((row): Level => {
         const stats = statsOf(row.id)
+        const levelVotes = votes.get(row.id)
+        const main =
+            levelVotes === undefined
+                ? undefined
+                : toSkillsetScores(skillsets, normalizeScores(levelVotes))[0]
 
         return {
             ...toLevelRef(row),
@@ -261,6 +277,7 @@ function selectLevels(where: SQL | undefined) {
             futurePosition: row.position === null ? row.futurePosition : null,
             engagement: stats.engagement,
             ratingsCount: stats.ratingsCount,
+            skillset: main === undefined ? null : main.skillset,
             points: row.position === null ? 0 : pointsFor(row.position),
             recordsCount: stats.recordsCount,
             addedAt: row.placedAt ?? row.createdAt,
@@ -499,6 +516,7 @@ export function getLeaderboard(): LeaderboardEntry[] {
         .all()
 
     const beatenBy = beatenLevels()
+    const tags = skillsetTags(beatenBy)
 
     const entries = players.flatMap((player) => {
         const ref = toPlayerRef(player)
@@ -521,6 +539,7 @@ export function getLeaderboard(): LeaderboardEntry[] {
                 completions: beaten.length,
                 hardest: hardest === undefined ? null : toLevelRef(hardest),
                 accountVerified: player.accountVerified,
+                skillset: tags[ref.username] ?? null,
             },
         ]
     })
@@ -547,6 +566,7 @@ export function getPlayer(username: string) {
             ...playerColumns(user),
             accountVerified: user.accountVerified,
             iconKit: user.iconKit,
+            showSkillsets: user.showSkillsets,
             createdAt: user.createdAt,
         })
         .from(user)
@@ -564,6 +584,8 @@ export function getPlayerProfile(playerId: string, username: string) {
 
     const completed = selectCompletions(eq(record.playerId, playerId))
     const completedIds = new Set(completed.map((row) => row.level.id))
+    const completedLevels =
+        completed.length === 0 ? [] : selectLevels(inArray(level.id, [...completedIds]))
 
     // Best progress on the levels the player hasn't beaten yet
     const progress = bestPerPlayer(
@@ -587,7 +609,13 @@ export function getPlayerProfile(playerId: string, username: string) {
         completions: entry.completions,
         hardest: entry.hardest,
         accountVerified: entry.accountVerified,
-        completed: completed.map(toLevelRecord),
+        skillset: entry.skillset,
+        // Shown like the levels of the lists, with their whole levels
+        completed: completed.flatMap((row): PlayerSubmission[] => {
+            const beaten = completedLevels.find((other) => other.id === row.level.id)
+
+            return beaten === undefined ? [] : [{ ...toLevelRecord(row), level: beaten }]
+        }),
         progress: progress.map(toLevelRecord),
         verified: verified.map(toLevelRef),
     }
@@ -748,6 +776,208 @@ export function hasPendingRecord(levelId: number, playerId: string) {
         .get()
 
     return row !== undefined
+}
+
+// Skillsets
+
+const skillsetColumns = {
+    id: skillset.id,
+    name: skillset.name,
+    description: skillset.description,
+    icon: skillset.icon,
+}
+
+type SkillsetRow = {
+    id: number
+    name: string
+    description: string | null
+    icon: string
+}
+
+function toSkillset(row: SkillsetRow): Skillset {
+    return {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        iconUrl: mediaUrl(row.icon),
+    }
+}
+
+// In the order of the admins
+export function getSkillsets() {
+    return db
+        .select(skillsetColumns)
+        .from(skillset)
+        .orderBy(asc(skillset.position), asc(skillset.id))
+        .all()
+        .map(toSkillset)
+}
+
+export function getAdminSkillsets() {
+    return db
+        .select({
+            ...skillsetColumns,
+            position: skillset.position,
+            levelsCount: countDistinct(skillsetVote.levelId),
+        })
+        .from(skillset)
+        .leftJoin(skillsetVote, eq(skillsetVote.skillsetId, skillset.id))
+        .groupBy(skillset.id)
+        .orderBy(asc(skillset.position), asc(skillset.id))
+        .all()
+        .map((row): AdminSkillset => ({
+            ...toSkillset(row),
+            position: row.position,
+            levelsCount: row.levelsCount,
+        }))
+}
+
+// Scales the values so the biggest one becomes SKILLSET_SCORE_MAX, drops the ones at 0
+function normalizeScores(values: Map<number, number>) {
+    const max = Math.max(0, ...values.values())
+    const scores = new Map<number, number>()
+
+    if (max === 0) {
+        return scores
+    }
+
+    for (const [skillsetId, value] of values) {
+        if (value > 0) {
+            scores.set(skillsetId, (value / max) * SKILLSET_SCORE_MAX)
+        }
+    }
+
+    return scores
+}
+
+// The skillsets with a score from the best one, ties keep the order of the admins
+function toSkillsetScores(skillsets: Skillset[], scores: Map<number, number>) {
+    return skillsets
+        .flatMap((current): SkillsetScore[] => {
+            const score = scores.get(current.id)
+
+            return score === undefined ? [] : [{ skillset: current, score }]
+        })
+        .sort((a, b) => b.score - a.score)
+}
+
+// How many players voted for every skillset of the Main List levels, by level and skillset id
+function skillsetVotes(where?: SQL) {
+    const rows = db
+        .select({
+            levelId: skillsetVote.levelId,
+            skillsetId: skillsetVote.skillsetId,
+            votes: count(),
+        })
+        .from(skillsetVote)
+        .innerJoin(level, eq(level.id, skillsetVote.levelId))
+        .where(and(where, isNotNull(level.position)))
+        .groupBy(skillsetVote.levelId, skillsetVote.skillsetId)
+        .all()
+
+    const votes = new Map<number, Map<number, number>>()
+
+    for (const row of rows) {
+        const levelVotes = votes.get(row.levelId) ?? new Map<number, number>()
+        levelVotes.set(row.skillsetId, row.votes)
+        votes.set(row.levelId, levelVotes)
+    }
+
+    return votes
+}
+
+// Skillsets of a level of the Main List from the best one, and how many players voted
+export function getLevelSkillsets(current: Level) {
+    if (current.position === null) {
+        return { scores: [], voters: 0 }
+    }
+
+    const votes = skillsetVotes(eq(level.id, current.id)).get(current.id) ?? new Map()
+    const voters = db
+        .select({ count: countDistinct(skillsetVote.playerId) })
+        .from(skillsetVote)
+        .where(eq(skillsetVote.levelId, current.id))
+        .get()
+
+    return {
+        scores: toSkillsetScores(getSkillsets(), normalizeScores(votes)).map(
+            (score): LevelSkillsetScore => ({ ...score, votes: votes.get(score.skillset.id) ?? 0 }),
+        ),
+        voters: voters?.count ?? 0,
+    }
+}
+
+// Only players who beat a level of the Main List can vote for its skillsets
+export function getViewerSkillsets(current: Level, playerId: string | undefined) {
+    if (playerId === undefined || current.position === null) {
+        return { canVote: false, votes: [] }
+    }
+
+    const votes = db
+        .select({ skillsetId: skillsetVote.skillsetId })
+        .from(skillsetVote)
+        .where(and(eq(skillsetVote.levelId, current.id), eq(skillsetVote.playerId, playerId)))
+        .all()
+        .map((row) => row.skillsetId)
+
+    return { canVote: hasCompleted(current.id, playerId), votes }
+}
+
+// Scores of every player: the scores of the levels they beat summed up for every skillset, then
+// scaled like the ones of a level, by skillset id
+function playerSkillsetScores(beatenBy: (username: string) => LevelRefRow[]) {
+    const levelScores = new Map<number, Map<number, number>>()
+
+    for (const [levelId, votes] of skillsetVotes()) {
+        levelScores.set(levelId, normalizeScores(votes))
+    }
+
+    return (username: string) => {
+        const sums = new Map<number, number>()
+
+        for (const row of beatenBy(username)) {
+            for (const [skillsetId, score] of levelScores.get(row.id) ?? []) {
+                sums.set(skillsetId, (sums.get(skillsetId) ?? 0) + score)
+            }
+        }
+
+        return normalizeScores(sums)
+    }
+}
+
+// Main skillset of every player who shows it: the best score, the first in the admins' order on a
+// tie
+function skillsetTags(beatenBy: (username: string) => LevelRefRow[]): SkillsetTags {
+    const skillsets = getSkillsets()
+    const scoresOf = playerSkillsetScores(beatenBy)
+    const players = db
+        .select({ username: user.username })
+        .from(user)
+        .where(and(visiblePlayer(), eq(user.showSkillsetTag, true)))
+        .all()
+    const tags: SkillsetTags = {}
+
+    for (const player of players) {
+        if (player.username === null) {
+            continue
+        }
+
+        const main = toSkillsetScores(skillsets, scoresOf(player.username))[0]
+
+        if (main !== undefined) {
+            tags[player.username] = main.skillset
+        }
+    }
+
+    return tags
+}
+
+export function getSkillsetTags() {
+    return skillsetTags(beatenLevels())
+}
+
+export function getPlayerSkillsets(username: string) {
+    return toSkillsetScores(getSkillsets(), playerSkillsetScores(beatenLevels())(username))
 }
 
 // Admin tools

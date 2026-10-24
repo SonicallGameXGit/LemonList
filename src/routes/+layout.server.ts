@@ -23,6 +23,8 @@ export const load: LayoutServerLoad = ({ locals }) => {
             avatarUrl: avatarUrl(user.avatar),
             hasAvatar: user.avatar !== null && user.avatar !== undefined,
             accountVerified: user.accountVerified,
+            showSkillsetTag: user.showSkillsetTag,
+            showSkillsets: user.showSkillsets,
             admin,
             // Shown next to the admin link
             pendingRecords: admin ? countPendingRecords() : 0,

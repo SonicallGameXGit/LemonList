@@ -1,6 +1,7 @@
 // Fills the database with sample data for development: pnpm db:seed
-// Adds sample players (password: lemonlist), levels with generated previews, records, ratings and
-// list history, and the Demons In Between difficulties if they're missing. Refuses to run if there are levels already, pnpm db:seed --reset deletes ALL list
+// Adds sample players (password: lemonlist), levels with generated previews, records, ratings,
+// skillset votes and list history, and the Demons In Between difficulties and Demon Ladder skillsets
+// if they're missing. Refuses to run if there are levels already, pnpm db:seed --reset deletes ALL list
 // data (levels, records, ratings, history, level submissions) and the sample players first.
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
@@ -13,9 +14,21 @@ import * as schema from '../src/lib/server/db/schema.ts'
 import { ENGAGEMENT_MAX, GameDifficulty, ListChangeKind, RecordStatus } from '../src/lib/list.ts'
 import { MediaKind, deleteMediaFile, writeImage } from '../src/lib/server/media-store.ts'
 import { addDibDifficulties } from './dib.ts'
+import { addDefaultSkillsets } from './gdladder.ts'
 import { drawScene } from './scene.ts'
 
-const { difficulty, level, levelSubmission, listChange, rating, record, user, account } = schema
+const {
+    difficulty,
+    level,
+    levelSubmission,
+    listChange,
+    rating,
+    record,
+    skillset,
+    skillsetVote,
+    user,
+    account,
+} = schema
 
 const databaseUrl = process.env.DATABASE_URL
 const mediaDir =
@@ -63,6 +76,7 @@ async function reset() {
     db.transaction((tx) => {
         tx.delete(listChange).run()
         tx.delete(rating).run()
+        tx.delete(skillsetVote).run()
         tx.delete(record).run()
         tx.delete(levelSubmission).run()
         tx.delete(level).run()
@@ -114,6 +128,21 @@ const addedDifficulties = await addDibDifficulties(db, mediaDir)
 if (addedDifficulties.length > 0) {
     console.info(`Added ${addedDifficulties.length} Demons In Between difficulties`)
 }
+
+// Skillsets the players vote for, in the order of the admins
+
+const addedSkillsets = await addDefaultSkillsets(db, mediaDir)
+
+if (addedSkillsets.length > 0) {
+    console.info(`Added ${addedSkillsets.length} Demon Ladder skillsets`)
+}
+
+const skillsetIds = db
+    .select({ id: skillset.id })
+    .from(skillset)
+    .orderBy(skillset.position)
+    .all()
+    .map((row) => row.id)
 
 function difficultyId(name: string | null) {
     if (name === null) {
@@ -457,6 +486,7 @@ db.transaction((tx) => {
 
     const records: (typeof record.$inferInsert)[] = []
     const ratings: (typeof rating.$inferInsert)[] = []
+    const votes: (typeof skillsetVote.$inferInsert)[] = []
 
     mainLevels.forEach(({ seed }, levelIndex) => {
         const levelId = mainIds[levelIndex]
@@ -505,6 +535,24 @@ db.transaction((tx) => {
                 submittedAt,
             })
 
+            // Every level tests 3 skillsets, players agree on the first ones more often
+            if (beaten && status === RecordStatus.Approved && skillsetIds.length > 0) {
+                const tested = [
+                    ...new Set(
+                        [0, 1, 2].map(
+                            (index) =>
+                                skillsetIds[(levelIndex * 7 + index * 5) % skillsetIds.length],
+                        ),
+                    ),
+                ]
+
+                tested.forEach((skillsetId, index) => {
+                    if (skillsetId !== undefined && (playerIndex + index) % (index + 1) === 0) {
+                        votes.push({ levelId, playerId: player.id, skillsetId })
+                    }
+                })
+            }
+
             // Not everyone rates, so the dashboard has levels to rate
             if (
                 beaten &&
@@ -529,6 +577,10 @@ db.transaction((tx) => {
 
     tx.insert(record).values(records).run()
     tx.insert(rating).values(ratings).run()
+
+    if (votes.length > 0) {
+        tx.insert(skillsetVote).values(votes).run()
+    }
 
     // History of the Main List
 
@@ -578,7 +630,7 @@ db.transaction((tx) => {
         .run()
 
     console.info(
-        `Added ${players.length} players, ${mainLevels.length + futureLevels.length} levels, ${records.length} records and ${ratings.length} ratings`,
+        `Added ${players.length} players, ${mainLevels.length + futureLevels.length} levels, ${records.length} records, ${ratings.length} ratings and ${votes.length} skillset votes`,
     )
 })
 

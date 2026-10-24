@@ -1,6 +1,7 @@
 // Player icons of Geometry Dash (the icon kit). Sprites come from the game (scripts/icons.ts writes
 // them to static/gd/icons), here is everything to compose them. No SvelteKit imports: the
 // extraction script uses this module too
+import * as v from 'valibot'
 
 // In the order of the garage tabs
 export enum IconMode {
@@ -226,6 +227,53 @@ export type IconManifest = {
     // Idle pose, from the bottom part to the top one
     poses: Record<IconMode.Robot | IconMode.Spider, IconPart[]>
 }
+
+const frameSchema = v.object({
+    y: v.number(),
+    width: v.number(),
+    height: v.number(),
+    offsetX: v.number(),
+    offsetY: v.number(),
+})
+
+const sheetsSchema = v.array(
+    v.object({
+        width: v.number(),
+        height: v.number(),
+        frames: v.record(v.string(), frameSchema),
+    }),
+)
+
+const poseSchema = v.array(
+    v.object({
+        part: v.string(),
+        x: v.number(),
+        y: v.number(),
+        scaleX: v.number(),
+        scaleY: v.number(),
+        rotation: v.number(),
+        back: v.boolean(),
+    }),
+)
+
+// Checks the manifest when it's loaded
+export const iconManifestSchema = v.object({
+    sheets: v.object({
+        [IconMode.Cube]: sheetsSchema,
+        [IconMode.Ship]: sheetsSchema,
+        [IconMode.Ball]: sheetsSchema,
+        [IconMode.Ufo]: sheetsSchema,
+        [IconMode.Wave]: sheetsSchema,
+        [IconMode.Robot]: sheetsSchema,
+        [IconMode.Spider]: sheetsSchema,
+        [IconMode.Swing]: sheetsSchema,
+        [IconMode.Jetpack]: sheetsSchema,
+    }),
+    poses: v.object({
+        [IconMode.Robot]: poseSchema,
+        [IconMode.Spider]: poseSchema,
+    }),
+})
 
 export function iconCount(manifest: IconManifest, mode: IconMode) {
     return manifest.sheets[mode].length

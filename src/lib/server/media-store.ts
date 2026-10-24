@@ -9,6 +9,7 @@ export enum MediaKind {
     Avatar = 'avatars',
     Preview = 'previews',
     DifficultyFace = 'difficulties',
+    SkillsetIcon = 'skillsets',
 }
 
 // Every image is re-encoded, so the stored files are always of this type
@@ -19,7 +20,7 @@ type ImageRules = {
     width: number
     height: number
     // Avatars are game icons with transparency, keep them whole. Previews fill the frame.
-    // Difficulty faces keep their own shape and are only scaled down
+    // Difficulty faces and skillset icons keep their own shape and are only scaled down
     fit: 'contain' | 'cover' | 'inside'
 }
 
@@ -29,6 +30,7 @@ export const imageRules: Record<MediaKind, ImageRules> = {
     [MediaKind.Avatar]: { maxBytes: 2 * MEGABYTE, width: 256, height: 256, fit: 'contain' },
     [MediaKind.Preview]: { maxBytes: 8 * MEGABYTE, width: 1280, height: 720, fit: 'cover' },
     [MediaKind.DifficultyFace]: { maxBytes: 2 * MEGABYTE, width: 256, height: 256, fit: 'inside' },
+    [MediaKind.SkillsetIcon]: { maxBytes: 2 * MEGABYTE, width: 256, height: 256, fit: 'inside' },
 }
 
 const acceptedFormats = ['jpeg', 'png', 'webp']

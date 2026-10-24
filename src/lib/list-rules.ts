@@ -5,6 +5,8 @@ export const URL_MAX_LENGTH = 300
 export const NOTES_MAX_LENGTH = 500
 export const BAN_REASON_MAX_LENGTH = 200
 export const DIFFICULTY_NAME_MAX_LENGTH = 30
+export const SKILLSET_NAME_MAX_LENGTH = 30
+export const SKILLSET_DESCRIPTION_MAX_LENGTH = 200
 // Geometry Dash level IDs fit into a signed 32-bit integer
 export const GD_ID_MAX = 2_147_483_647
 // The game allows 15 characters, some old accounts have longer names

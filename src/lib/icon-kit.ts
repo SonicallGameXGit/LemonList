@@ -7,57 +7,12 @@ import {
     iconColors,
     iconCount,
     iconLayers,
+    iconManifestSchema,
     iconSvg,
     type IconColors,
     type IconKit,
     type IconManifest,
 } from '#lib/icons.ts'
-
-const frameSchema = v.object({
-    y: v.number(),
-    width: v.number(),
-    height: v.number(),
-    offsetX: v.number(),
-    offsetY: v.number(),
-})
-
-const sheetsSchema = v.array(
-    v.object({
-        width: v.number(),
-        height: v.number(),
-        frames: v.record(v.string(), frameSchema),
-    }),
-)
-
-const poseSchema = v.array(
-    v.object({
-        part: v.string(),
-        x: v.number(),
-        y: v.number(),
-        scaleX: v.number(),
-        scaleY: v.number(),
-        rotation: v.number(),
-        back: v.boolean(),
-    }),
-)
-
-const manifestSchema = v.object({
-    sheets: v.object({
-        [IconMode.Cube]: sheetsSchema,
-        [IconMode.Ship]: sheetsSchema,
-        [IconMode.Ball]: sheetsSchema,
-        [IconMode.Ufo]: sheetsSchema,
-        [IconMode.Wave]: sheetsSchema,
-        [IconMode.Robot]: sheetsSchema,
-        [IconMode.Spider]: sheetsSchema,
-        [IconMode.Swing]: sheetsSchema,
-        [IconMode.Jetpack]: sheetsSchema,
-    }),
-    poses: v.object({
-        [IconMode.Robot]: poseSchema,
-        [IconMode.Spider]: poseSchema,
-    }),
-})
 
 let manifestRequest: Promise<IconManifest> | null = null
 
@@ -73,7 +28,7 @@ export function loadIconManifest(fetcher: typeof fetch) {
 
                 return response.json()
             })
-            .then((json: unknown) => v.parse(manifestSchema, json))
+            .then((json: unknown) => v.parse(iconManifestSchema, json))
             .catch((error: unknown) => {
                 manifestRequest = null
                 throw error

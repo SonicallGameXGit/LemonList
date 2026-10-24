@@ -9,7 +9,7 @@
         USERNAME_PATTERN,
         PASSWORD_MIN_LENGTH,
     } from '#lib/auth-rules.ts'
-    import { sprite } from '#lib/gd.ts'
+    import { garageSprite, sprite } from '#lib/gd.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
     import GdButton from '#lib/components/GdButton.svelte'
@@ -139,6 +139,11 @@
     }
 
     let uploading = $state(false)
+
+    // Starts from the saved settings, the checkboxes change it
+    let showSkillsetTag = $derived(data.user === null ? true : data.user.showSkillsetTag)
+    let showSkillsets = $derived(data.user === null ? true : data.user.showSkillsets)
+    let savingSkillsets = $state(false)
 </script>
 
 <svelte:head>
@@ -158,6 +163,7 @@
 {#if data.user !== null}
     <div class="mx-auto flex max-w-3xl flex-col gap-14">
         {@render group('Profile', profile)}
+        {@render group('Skillsets', skillsets)}
         {@render group('Sign-in', signIn)}
         {@render group('Danger zone', danger)}
     </div>
@@ -261,6 +267,76 @@
             </GdButton>
         </form>
     {/if}
+{/snippet}
+
+{#snippet skillsets()}
+    <form
+        method="POST"
+        action="?/skillsets"
+        class="gd-dark flex flex-col gap-5 p-6"
+        use:enhance={() => {
+            savingSkillsets = true
+
+            return async ({ update }) => {
+                await update({ reset: false })
+                savingSkillsets = false
+            }
+        }}
+    >
+        <p>
+            Your skillsets come from the votes on the Main List levels you beat. The best one is
+            your main skillset.
+        </p>
+        {@render toggle(
+            'showSkillsetTag',
+            'Show my main skillset next to my name',
+            showSkillsetTag,
+            (checked) => (showSkillsetTag = checked),
+        )}
+        {@render toggle(
+            'showSkillsets',
+            'Show my skillsets on my profile',
+            showSkillsets,
+            (checked) => (showSkillsets = checked),
+        )}
+
+        {#if form?.action === 'skillsets' && form.error !== null}
+            <Alert kind="error">{form.error}</Alert>
+        {/if}
+        {#if form?.action === 'skillsets' && form.success !== null}
+            <Alert kind="success">{form.success}</Alert>
+        {/if}
+
+        <GdButton type="submit" size="sm" class="self-start" disabled={savingSkillsets}>
+            Save
+        </GdButton>
+    </form>
+{/snippet}
+
+<!-- A checkbox with the toggle of the game settings -->
+{#snippet toggle(
+    name: string,
+    label: string,
+    checked: boolean,
+    onchange: (checked: boolean) => void,
+)}
+    <label
+        class="flex cursor-pointer items-center gap-4 rounded-xl has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-white"
+    >
+        <input
+            type="checkbox"
+            {name}
+            class="sr-only"
+            {checked}
+            onchange={(event) => onchange(event.currentTarget.checked)}
+        />
+        <img
+            src={garageSprite(checked ? 'check-on' : 'check-off')}
+            alt=""
+            class="size-11 shrink-0 gd-press object-contain"
+        />
+        <span class="gd-title text-xl">{label}</span>
+    </label>
 {/snippet}
 
 {#snippet signIn()}

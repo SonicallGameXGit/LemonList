@@ -23,6 +23,8 @@ export const user = sqliteTable('user', {
     avatar: text('avatar'),
     iconKit: text('icon_kit'),
     accountVerified: integer('account_verified', { mode: 'boolean' }).default(false).notNull(),
+    showSkillsetTag: integer('show_skillset_tag', { mode: 'boolean' }).default(true).notNull(),
+    showSkillsets: integer('show_skillsets', { mode: 'boolean' }).default(true).notNull(),
 })
 
 export const session = sqliteTable(

@@ -1,5 +1,11 @@
 import { getChangelogs } from '#lib/server/changelogs.ts'
-import { getListStats, getMainList, getRecentChanges, getRecentRecords } from '#lib/server/list.ts'
+import {
+    getListStats,
+    getMainList,
+    getRecentChanges,
+    getRecentRecords,
+    getSkillsetTags,
+} from '#lib/server/list.ts'
 import type { PageServerLoad } from './$types'
 
 export const load: PageServerLoad = () => {
@@ -9,5 +15,6 @@ export const load: PageServerLoad = () => {
         changes: getRecentChanges(5),
         recentRecords: getRecentRecords(5),
         changelogs: getChangelogs(2),
+        skillsetTags: getSkillsetTags(),
     }
 }

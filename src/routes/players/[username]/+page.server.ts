@@ -1,7 +1,7 @@
 import { error } from '@sveltejs/kit'
 import { kitIconSvg, loadIconManifest, parseIconKit } from '#lib/icon-kit.ts'
 import { iconModeNames, iconModes } from '#lib/icons.ts'
-import { getPlayer, getPlayerProfile } from '#lib/server/list.ts'
+import { getPlayer, getPlayerProfile, getPlayerSkillsets } from '#lib/server/list.ts'
 import { avatarUrl } from '#lib/server/media.ts'
 import type { PageServerLoad } from './$types'
 
@@ -38,5 +38,7 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
         },
         profile,
         icons,
+        // The player can hide them in the settings
+        skillsets: player.showSkillsets ? getPlayerSkillsets(player.username) : null,
     }
 }

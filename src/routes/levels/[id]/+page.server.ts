@@ -2,14 +2,18 @@ import { error } from '@sveltejs/kit'
 import * as v from 'valibot'
 import { ENGAGEMENT_MAX } from '#lib/list.ts'
 import { requireUser } from '#lib/server/access.ts'
-import { attempt, parseForm, requiredInteger } from '#lib/server/forms.ts'
-import { rateLevel } from '#lib/server/list-actions.ts'
+import { attempt, formFailure, id, parseForm, requiredInteger } from '#lib/server/forms.ts'
+import { rateLevel, voteSkillsets } from '#lib/server/list-actions.ts'
 import {
     getEngagementDistribution,
     getLevel,
     getLevelNeighbours,
     getLevelRecords,
+    getLevelSkillsets,
+    getSkillsetTags,
+    getSkillsets,
     getViewerRating,
+    getViewerSkillsets,
 } from '#lib/server/list.ts'
 import type { Actions, PageServerLoad } from './$types'
 
@@ -36,6 +40,11 @@ export const load: PageServerLoad = ({ params, locals }) => {
         records: getLevelRecords(level.id),
         distribution: getEngagementDistribution(level.id),
         viewerRating: getViewerRating(level, locals.user?.id),
+        skillsets: getLevelSkillsets(level),
+        // Every skillset, to vote
+        allSkillsets: level.position === null ? [] : getSkillsets(),
+        viewerSkillsets: getViewerSkillsets(level, locals.user?.id),
+        skillsetTags: getSkillsetTags(),
     }
 }
 
@@ -53,8 +62,25 @@ export const actions = {
         }
 
         const score = parsed.data.score
-        const id = levelId(params.id)
+        const target = levelId(params.id)
 
-        return attempt('rate', () => rateLevel(user.id, id, score), 'Thanks for rating!')
+        return attempt('rate', () => rateLevel(user.id, target, score), 'Thanks for rating!')
+    },
+    // The checked skillsets replace the ones the player chose before, none takes the vote back
+    skillsets: async ({ locals, params, request }) => {
+        const user = requireUser(locals)
+        const parsed = v.safeParse(v.array(id()), (await request.formData()).getAll('skillset'))
+
+        if (!parsed.success) {
+            return formFailure('skillsets', 'Reload the page and try again')
+        }
+
+        const skillsetIds = parsed.output
+
+        return attempt(
+            'skillsets',
+            () => voteSkillsets(user.id, levelId(params.id), skillsetIds),
+            skillsetIds.length === 0 ? 'Your vote was removed.' : 'Thanks for voting!',
+        )
     },
 } satisfies Actions

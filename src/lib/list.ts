@@ -90,6 +90,8 @@ export type Level = LevelRef & {
     // Average engagement rating from 1 to 10, null if nobody rated it yet
     engagement: number | null
     ratingsCount: number
+    // The skillset with the most votes, null on the Future List and without votes
+    skillset: Skillset | null
     points: number
     recordsCount: number
     addedAt: Date
@@ -209,6 +211,8 @@ export type LeaderboardEntry = {
     completions: number
     hardest: LevelRef | null
     accountVerified: boolean
+    // Main skillset, null if the player has none or hides it
+    skillset: Skillset | null
 }
 
 export type ListChange = {
@@ -223,3 +227,34 @@ export type ListChange = {
 }
 
 export const ENGAGEMENT_MAX = 10
+
+// A skillset players vote for on the levels they beat, the admins manage them on /admin/skillsets
+export type Skillset = {
+    id: number
+    name: string
+    description: string | null
+    iconUrl: string
+}
+
+export type AdminSkillset = Skillset & {
+    position: number
+    // Levels it was voted for, by any number of players
+    levelsCount: number
+}
+
+// Score of a skillset from 0 to SKILLSET_SCORE_MAX, against the top skillset (it has the max).
+// A level counts the players who voted for it, a player sums the scores of the levels they beat
+export type SkillsetScore = {
+    skillset: Skillset
+    score: number
+}
+
+export type LevelSkillsetScore = SkillsetScore & {
+    votes: number
+}
+
+export const SKILLSET_SCORE_MAX = 10
+
+// Main skillsets of the players shown on a page, by username. Players without one (or who hide
+// it) aren't there
+export type SkillsetTags = Record<string, Skillset>

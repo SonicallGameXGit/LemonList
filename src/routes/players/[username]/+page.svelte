@@ -3,8 +3,12 @@
     import { sprite } from '#lib/gd.ts'
     import { formatDate, formatPoints } from '#lib/format.ts'
     import Avatar from '#lib/components/Avatar.svelte'
+    import GdButton from '#lib/components/GdButton.svelte'
     import GdIcon from '#lib/components/GdIcon.svelte'
     import GdList from '#lib/components/GdList.svelte'
+    import LevelRow from '#lib/components/LevelRow.svelte'
+    import SkillsetScores from '#lib/components/SkillsetScores.svelte'
+    import SkillsetTag from '#lib/components/SkillsetTag.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
@@ -29,6 +33,7 @@
     <p class="mt-3 text-lg text-ink-200">
         @{player.username} · member since {formatDate(player.createdAt)}
     </p>
+    <SkillsetTag skillset={profile.skillset} class="mt-4" />
 
     <!-- The icon kit, like the row of icons on game profiles -->
     {#if data.icons.length > 0}
@@ -82,51 +87,55 @@
         {:else}
             <GdList>
                 {#each profile.completed as record (record.id)}
-                    {@const href = resolve('/levels/[id]', { id: String(record.level.id) })}
-                    <!-- Phones show the preview first and let the name wrap -->
-                    <li class="flex flex-col gap-3 px-4 py-4 sm:px-5 sm:py-3">
-                        <a {href} class="sm:hidden" tabindex="-1">
-                            <img
-                                src={record.level.thumbnailUrl}
-                                alt=""
-                                loading="lazy"
-                                class="aspect-video w-full rounded-lg border-[3px] border-black object-cover"
-                            />
-                        </a>
-                        <div class="flex items-center gap-4">
-                            <span class="w-14 shrink-0 text-center gd-title text-xl text-gd-yellow">
-                                #{record.level.position}
-                            </span>
-                            <div
-                                class="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-4"
-                            >
-                                <a
-                                    {href}
-                                    class="min-w-0 gd-title text-2xl break-words sm:flex-1 sm:truncate"
-                                >
-                                    {record.level.name}
-                                </a>
+                    <LevelRow level={record.level}>
+                        {#snippet actions()}
+                            <div class="flex flex-col items-end gap-1">
                                 <span class="text-base text-black/55">
                                     {formatDate(record.submittedAt)}
                                 </span>
+                                <div class="flex items-center gap-3">
+                                    <a
+                                        href={record.videoUrl}
+                                        target="_blank"
+                                        rel="external noopener noreferrer"
+                                        class="shrink-0 gd-press"
+                                        aria-label="Watch the video"
+                                    >
+                                        <img src={sprite('youtube')} alt="" class="h-11" />
+                                    </a>
+                                    <GdButton
+                                        href={resolve('/levels/[id]', {
+                                            id: String(record.level.id),
+                                        })}
+                                        white
+                                    >
+                                        View
+                                    </GdButton>
+                                </div>
                             </div>
-                            <a
-                                href={record.videoUrl}
-                                target="_blank"
-                                rel="external noopener noreferrer"
-                                class="shrink-0 gd-press"
-                                aria-label="Watch the video"
-                            >
-                                <img src={sprite('youtube')} alt="" class="h-11" />
-                            </a>
-                        </div>
-                    </li>
+                        {/snippet}
+                    </LevelRow>
                 {/each}
             </GdList>
         {/if}
     </section>
 
     <aside class="flex flex-col gap-12">
+        {#if data.skillsets !== null}
+            <section>
+                <h2 class="mb-4 text-center gd-title text-3xl">Skillsets</h2>
+                <div class="gd-box px-3 py-2">
+                    {#if data.skillsets.length === 0}
+                        <p class="text-center">
+                            Shows up once {player.displayUsername} beats levels with skillset votes.
+                        </p>
+                    {:else}
+                        <SkillsetScores scores={data.skillsets} />
+                    {/if}
+                </div>
+            </section>
+        {/if}
+
         <section>
             <h2 class="mb-4 text-center gd-title text-3xl">In progress</h2>
             <ul class="gd-dark flex flex-col gap-3 p-5">

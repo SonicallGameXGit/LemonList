@@ -8,6 +8,7 @@
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import LevelRow from '#lib/components/LevelRow.svelte'
+    import SkillsetTag from '#lib/components/SkillsetTag.svelte'
     import type { PageProps } from './$types'
 
     let { data }: PageProps = $props()
@@ -73,14 +74,21 @@
                                 class="size-12"
                             />
                             <div class="min-w-0 flex-1">
-                                <a
-                                    href={resolve('/players/[username]', {
-                                        username: record.player.username,
-                                    })}
-                                    class="gd-gold text-xl"
-                                >
-                                    {record.player.displayUsername}
-                                </a>
+                                <p class="flex items-center gap-2">
+                                    <a
+                                        href={resolve('/players/[username]', {
+                                            username: record.player.username,
+                                        })}
+                                        class="truncate gd-gold text-xl"
+                                    >
+                                        {record.player.displayUsername}
+                                    </a>
+                                    <SkillsetTag
+                                        skillset={data.skillsetTags[record.player.username]}
+                                        compact
+                                        class="size-6"
+                                    />
+                                </p>
                                 <p class="truncate text-lg">
                                     beat
                                     <a

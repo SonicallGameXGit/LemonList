@@ -20,6 +20,8 @@
         "admin": "tsx --env-file=.env scripts/admin.ts",
         "difficulties": "tsx --env-file=.env scripts/difficulties.ts",
         "icons": "tsx scripts/icons.ts",
+        "picker": "tsx scripts/picker.ts",
+        "skillsets": "tsx --env-file=.env scripts/skillsets.ts",
         "auth:schema": "auth generate --config src/lib/server/auth.ts --output src/lib/server/db/auth.schema.ts --yes"
     },
     "devDependencies": {

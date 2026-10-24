@@ -57,6 +57,10 @@ export const auth = betterAuth({
             iconKit: { type: 'string', required: false, input: false },
             // Manual verification by an admin, protects players from impersonation
             accountVerified: { type: 'boolean', required: true, defaultValue: false, input: false },
+            // Settings of the player: the tag of their main skillset next to their name, and the
+            // skillsets block of their profile
+            showSkillsetTag: { type: 'boolean', required: true, defaultValue: true, input: false },
+            showSkillsets: { type: 'boolean', required: true, defaultValue: true, input: false },
         },
         changeEmail: {
             enabled: true,

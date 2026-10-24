@@ -5,6 +5,7 @@
     import GdList from '#lib/components/GdList.svelte'
     import PageTitle from '#lib/components/PageTitle.svelte'
     import SearchBox from '#lib/components/SearchBox.svelte'
+    import SkillsetTag from '#lib/components/SkillsetTag.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
@@ -59,6 +60,7 @@
                         {#if entry.accountVerified}
                             <Sprite name="check" class="h-7" label="Verified account" />
                         {/if}
+                        <SkillsetTag skillset={entry.skillset} compact class="size-8" />
                     </a>
                     <p class="mt-1.5 flex flex-wrap items-center gap-x-5 gap-y-1 gd-title text-lg">
                         <span class="flex items-center gap-2" title="Points">

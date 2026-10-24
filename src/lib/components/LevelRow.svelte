@@ -89,17 +89,19 @@
             >
                 {level.name}
             </a>
-            <p class="gd-gold text-lg break-words @xl:truncate @xl:text-xl">
-                By {level.creator}
+            <!-- Every piece of text is its own gold gradient: nesting the link inside a clipped
+                 gradient left a white outline around some names -->
+            <p class="text-lg break-words text-gd-yellow @xl:truncate @xl:text-xl">
+                <span class="gd-gold">By {level.creator}</span>
                 {#if level.verifier !== null}
-                    · {level.position === null ? 'Verifier' : 'Verified by'}
-                    <!-- Lights up with its own gradient: the gold is the line's background clipped
-                     to the text, a filter here gets Chrome to leave stale pixels after the hover -->
+                    <span class="gd-gold">
+                        · {level.position === null ? 'Verifier' : 'Verified by'}
+                    </span>
                     <a
                         href={resolve('/players/[username]', {
                             username: level.verifier.username,
                         })}
-                        class="bg-clip-text hover:bg-[linear-gradient(#ffc23d,#fff3a0)]"
+                        class="gd-gold hover:bg-[linear-gradient(#ffc23d,#fff3a0)]"
                     >
                         {level.verifier.displayUsername}
                     </a>
@@ -136,6 +138,14 @@
                         <Sprite name="star" class="h-6" />
                         {level.engagement === null ? '-' : formatEngagement(level.engagement)}
                     </span>
+                    {#if level.skillset !== null}
+                        <img
+                            src={level.skillset.iconUrl}
+                            alt="Main skillset: {level.skillset.name}"
+                            title="Main skillset: {level.skillset.name}"
+                            class="size-7 shrink-0 object-contain"
+                        />
+                    {/if}
                 </p>
             </div>
         {/if}

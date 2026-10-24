@@ -1,0 +1,1108 @@
+{
+    "categories": [
+        {
+            "id": "orbs",
+            "name": "Orbs and pads",
+            "icons": [
+                {
+                    "id": "orbs/yellow-orb",
+                    "name": "Yellow orb"
+                },
+                {
+                    "id": "orbs/pink-orb",
+                    "name": "Pink orb"
+                },
+                {
+                    "id": "orbs/red-orb",
+                    "name": "Red orb"
+                },
+                {
+                    "id": "orbs/blue-orb",
+                    "name": "Blue orb"
+                },
+                {
+                    "id": "orbs/green-orb",
+                    "name": "Green orb"
+                },
+                {
+                    "id": "orbs/black-orb",
+                    "name": "Black orb"
+                },
+                {
+                    "id": "orbs/green-dash-orb",
+                    "name": "Green dash orb"
+                },
+                {
+                    "id": "orbs/pink-dash-orb",
+                    "name": "Pink dash orb"
+                },
+                {
+                    "id": "orbs/spider-orb",
+                    "name": "Spider orb"
+                },
+                {
+                    "id": "orbs/teleport-orb",
+                    "name": "Teleport orb"
+                },
+                {
+                    "id": "orbs/toggle-orb",
+                    "name": "Toggle orb"
+                },
+                {
+                    "id": "orbs/yellow-pad",
+                    "name": "Yellow pad"
+                },
+                {
+                    "id": "orbs/pink-pad",
+                    "name": "Pink pad"
+                },
+                {
+                    "id": "orbs/red-pad",
+                    "name": "Red pad"
+                },
+                {
+                    "id": "orbs/blue-pad",
+                    "name": "Blue pad"
+                },
+                {
+                    "id": "orbs/spider-pad",
+                    "name": "Spider pad"
+                }
+            ]
+        },
+        {
+            "id": "portals",
+            "name": "Portals",
+            "icons": [
+                {
+                    "id": "portals/blue-gravity-portal",
+                    "name": "Blue gravity portal"
+                },
+                {
+                    "id": "portals/yellow-gravity-portal",
+                    "name": "Yellow gravity portal"
+                },
+                {
+                    "id": "portals/cube-portal",
+                    "name": "Cube portal"
+                },
+                {
+                    "id": "portals/ship-portal",
+                    "name": "Ship portal"
+                },
+                {
+                    "id": "portals/orange-mirror-portal",
+                    "name": "Orange mirror portal"
+                },
+                {
+                    "id": "portals/blue-mirror-portal",
+                    "name": "Blue mirror portal"
+                },
+                {
+                    "id": "portals/ball-portal",
+                    "name": "Ball portal"
+                },
+                {
+                    "id": "portals/normal-size-portal",
+                    "name": "Normal size portal"
+                },
+                {
+                    "id": "portals/mini-portal",
+                    "name": "Mini portal"
+                },
+                {
+                    "id": "portals/ufo-portal",
+                    "name": "UFO portal"
+                },
+                {
+                    "id": "portals/dual-portal",
+                    "name": "Dual portal"
+                },
+                {
+                    "id": "portals/single-portal",
+                    "name": "Single portal"
+                },
+                {
+                    "id": "portals/wave-portal",
+                    "name": "Wave portal"
+                },
+                {
+                    "id": "portals/robot-portal",
+                    "name": "Robot portal"
+                },
+                {
+                    "id": "portals/teleport-portal",
+                    "name": "Teleport portal"
+                },
+                {
+                    "id": "portals/teleport-exit-portal",
+                    "name": "Teleport exit portal"
+                },
+                {
+                    "id": "portals/spider-portal",
+                    "name": "Spider portal"
+                },
+                {
+                    "id": "portals/green-gravity-portal",
+                    "name": "Green gravity portal"
+                },
+                {
+                    "id": "portals/swing-portal",
+                    "name": "Swing portal"
+                },
+                {
+                    "id": "portals/slow-speed",
+                    "name": "Slow speed"
+                },
+                {
+                    "id": "portals/normal-speed",
+                    "name": "Normal speed"
+                },
+                {
+                    "id": "portals/fast-speed",
+                    "name": "Fast speed"
+                },
+                {
+                    "id": "portals/very-fast-speed",
+                    "name": "Very fast speed"
+                },
+                {
+                    "id": "portals/super-fast-speed",
+                    "name": "Super fast speed"
+                },
+                {
+                    "id": "portals/checkpoint",
+                    "name": "Checkpoint"
+                }
+            ]
+        },
+        {
+            "id": "hazards",
+            "name": "Hazards",
+            "icons": [
+                {
+                    "id": "hazards/spike-1",
+                    "name": "Spike 1"
+                },
+                {
+                    "id": "hazards/spike-2",
+                    "name": "Spike 2"
+                },
+                {
+                    "id": "hazards/spike-3",
+                    "name": "Spike 3"
+                },
+                {
+                    "id": "hazards/spike-4",
+                    "name": "Spike 4"
+                },
+                {
+                    "id": "hazards/ice-spike-1",
+                    "name": "Ice spike 1"
+                },
+                {
+                    "id": "hazards/ice-spike-2",
+                    "name": "Ice spike 2"
+                },
+                {
+                    "id": "hazards/ice-spike-3",
+                    "name": "Ice spike 3"
+                },
+                {
+                    "id": "hazards/color-spike-1",
+                    "name": "Color spike 1"
+                },
+                {
+                    "id": "hazards/color-spike-2",
+                    "name": "Color spike 2"
+                },
+                {
+                    "id": "hazards/color-spike-3",
+                    "name": "Color spike 3"
+                },
+                {
+                    "id": "hazards/color-spike-4",
+                    "name": "Color spike 4"
+                },
+                {
+                    "id": "hazards/ground-spikes-1",
+                    "name": "Ground spikes 1"
+                },
+                {
+                    "id": "hazards/ground-spikes-2",
+                    "name": "Ground spikes 2"
+                },
+                {
+                    "id": "hazards/ground-spikes-3",
+                    "name": "Ground spikes 3"
+                },
+                {
+                    "id": "hazards/ground-spikes-4",
+                    "name": "Ground spikes 4"
+                },
+                {
+                    "id": "hazards/saw-1",
+                    "name": "Saw 1"
+                },
+                {
+                    "id": "hazards/saw-2",
+                    "name": "Saw 2"
+                },
+                {
+                    "id": "hazards/saw-3",
+                    "name": "Saw 3"
+                },
+                {
+                    "id": "hazards/blade-1",
+                    "name": "Blade 1"
+                },
+                {
+                    "id": "hazards/blade-2",
+                    "name": "Blade 2"
+                },
+                {
+                    "id": "hazards/blade-3",
+                    "name": "Blade 3"
+                },
+                {
+                    "id": "hazards/dark-blade-1",
+                    "name": "Dark blade 1"
+                },
+                {
+                    "id": "hazards/dark-blade-2",
+                    "name": "Dark blade 2"
+                },
+                {
+                    "id": "hazards/dark-blade-3",
+                    "name": "Dark blade 3"
+                },
+                {
+                    "id": "hazards/light-blade-1",
+                    "name": "Light blade 1"
+                },
+                {
+                    "id": "hazards/light-blade-2",
+                    "name": "Light blade 2"
+                },
+                {
+                    "id": "hazards/light-blade-3",
+                    "name": "Light blade 3"
+                },
+                {
+                    "id": "hazards/spin-blade-1",
+                    "name": "Spin blade 1"
+                },
+                {
+                    "id": "hazards/spin-blade-2",
+                    "name": "Spin blade 2"
+                },
+                {
+                    "id": "hazards/cogwheel-1",
+                    "name": "Cogwheel 1"
+                },
+                {
+                    "id": "hazards/cogwheel-2",
+                    "name": "Cogwheel 2"
+                },
+                {
+                    "id": "hazards/cogwheel-3",
+                    "name": "Cogwheel 3"
+                },
+                {
+                    "id": "hazards/blade-trap-1",
+                    "name": "Blade trap 1"
+                },
+                {
+                    "id": "hazards/blade-trap-2",
+                    "name": "Blade trap 2"
+                },
+                {
+                    "id": "hazards/blade-trap-3",
+                    "name": "Blade trap 3"
+                },
+                {
+                    "id": "hazards/spike-wheel-1",
+                    "name": "Spike wheel 1"
+                },
+                {
+                    "id": "hazards/spike-wheel-2",
+                    "name": "Spike wheel 2"
+                },
+                {
+                    "id": "hazards/spike-wheel-3",
+                    "name": "Spike wheel 3"
+                },
+                {
+                    "id": "hazards/fireball",
+                    "name": "Fireball"
+                }
+            ]
+        },
+        {
+            "id": "collectibles",
+            "name": "Collectibles",
+            "icons": [
+                {
+                    "id": "collectibles/star",
+                    "name": "Star"
+                },
+                {
+                    "id": "collectibles/moon",
+                    "name": "Moon"
+                },
+                {
+                    "id": "collectibles/diamond",
+                    "name": "Diamond"
+                },
+                {
+                    "id": "collectibles/key",
+                    "name": "Key"
+                },
+                {
+                    "id": "collectibles/gold-key",
+                    "name": "Gold key"
+                },
+                {
+                    "id": "collectibles/small-star",
+                    "name": "Small star"
+                },
+                {
+                    "id": "collectibles/small-moon",
+                    "name": "Small moon"
+                },
+                {
+                    "id": "collectibles/small-diamond",
+                    "name": "Small diamond"
+                },
+                {
+                    "id": "collectibles/secret-coin",
+                    "name": "Secret coin"
+                },
+                {
+                    "id": "collectibles/user-coin",
+                    "name": "User coin"
+                },
+                {
+                    "id": "collectibles/big-secret-coin",
+                    "name": "Big secret coin"
+                },
+                {
+                    "id": "collectibles/big-user-coin",
+                    "name": "Big user coin"
+                },
+                {
+                    "id": "collectibles/mana-orb",
+                    "name": "Mana orb"
+                },
+                {
+                    "id": "collectibles/diamond-shard",
+                    "name": "Diamond shard"
+                },
+                {
+                    "id": "collectibles/fire-shard",
+                    "name": "Fire shard"
+                },
+                {
+                    "id": "collectibles/ice-shard",
+                    "name": "Ice shard"
+                },
+                {
+                    "id": "collectibles/poison-shard",
+                    "name": "Poison shard"
+                },
+                {
+                    "id": "collectibles/shadow-shard",
+                    "name": "Shadow shard"
+                },
+                {
+                    "id": "collectibles/lava-shard",
+                    "name": "Lava shard"
+                },
+                {
+                    "id": "collectibles/earth-shard",
+                    "name": "Earth shard"
+                },
+                {
+                    "id": "collectibles/blood-shard",
+                    "name": "Blood shard"
+                },
+                {
+                    "id": "collectibles/metal-shard",
+                    "name": "Metal shard"
+                },
+                {
+                    "id": "collectibles/light-shard",
+                    "name": "Light shard"
+                },
+                {
+                    "id": "collectibles/soul-shard",
+                    "name": "Soul shard"
+                }
+            ]
+        },
+        {
+            "id": "symbols",
+            "name": "Symbols",
+            "icons": [
+                {
+                    "id": "symbols/demon",
+                    "name": "Demon"
+                },
+                {
+                    "id": "symbols/time",
+                    "name": "Time"
+                },
+                {
+                    "id": "symbols/like",
+                    "name": "Like"
+                },
+                {
+                    "id": "symbols/dislike",
+                    "name": "Dislike"
+                },
+                {
+                    "id": "symbols/downloads",
+                    "name": "Downloads"
+                },
+                {
+                    "id": "symbols/completions",
+                    "name": "Completions"
+                },
+                {
+                    "id": "symbols/creator-points",
+                    "name": "Creator points"
+                },
+                {
+                    "id": "symbols/hammer",
+                    "name": "Hammer"
+                },
+                {
+                    "id": "symbols/music",
+                    "name": "Music"
+                },
+                {
+                    "id": "symbols/note",
+                    "name": "Note"
+                },
+                {
+                    "id": "symbols/info",
+                    "name": "Info"
+                },
+                {
+                    "id": "symbols/lock",
+                    "name": "Lock"
+                },
+                {
+                    "id": "symbols/open-lock",
+                    "name": "Open lock"
+                },
+                {
+                    "id": "symbols/big-lock",
+                    "name": "Big lock"
+                },
+                {
+                    "id": "symbols/secret-lock",
+                    "name": "Secret lock"
+                },
+                {
+                    "id": "symbols/exclamation-mark",
+                    "name": "Exclamation mark"
+                },
+                {
+                    "id": "symbols/skull",
+                    "name": "Skull"
+                },
+                {
+                    "id": "symbols/heart",
+                    "name": "Heart"
+                },
+                {
+                    "id": "symbols/folder",
+                    "name": "Folder"
+                },
+                {
+                    "id": "symbols/collaboration",
+                    "name": "Collaboration"
+                },
+                {
+                    "id": "symbols/achievement",
+                    "name": "Achievement"
+                },
+                {
+                    "id": "symbols/magic",
+                    "name": "Magic"
+                },
+                {
+                    "id": "symbols/trending",
+                    "name": "Trending"
+                },
+                {
+                    "id": "symbols/recent",
+                    "name": "Recent"
+                },
+                {
+                    "id": "symbols/friends",
+                    "name": "Friends"
+                },
+                {
+                    "id": "symbols/mod-badge",
+                    "name": "Mod badge"
+                },
+                {
+                    "id": "symbols/elder-mod-badge",
+                    "name": "Elder mod badge"
+                },
+                {
+                    "id": "symbols/list-mod-badge",
+                    "name": "List mod badge"
+                },
+                {
+                    "id": "symbols/rank-1",
+                    "name": "Rank 1"
+                },
+                {
+                    "id": "symbols/top-10",
+                    "name": "Top 10"
+                },
+                {
+                    "id": "symbols/top-50",
+                    "name": "Top 50"
+                },
+                {
+                    "id": "symbols/top-100",
+                    "name": "Top 100"
+                },
+                {
+                    "id": "symbols/top-200",
+                    "name": "Top 200"
+                },
+                {
+                    "id": "symbols/top-500",
+                    "name": "Top 500"
+                },
+                {
+                    "id": "symbols/top-1000",
+                    "name": "Top 1000"
+                },
+                {
+                    "id": "symbols/ranked",
+                    "name": "Ranked"
+                },
+                {
+                    "id": "symbols/tier-1",
+                    "name": "Tier 1"
+                },
+                {
+                    "id": "symbols/tier-2",
+                    "name": "Tier 2"
+                },
+                {
+                    "id": "symbols/store-item",
+                    "name": "Store item"
+                }
+            ]
+        },
+        {
+            "id": "difficulties",
+            "name": "Difficulties",
+            "icons": [
+                {
+                    "id": "difficulties/n-a",
+                    "name": "N/A"
+                },
+                {
+                    "id": "difficulties/auto",
+                    "name": "Auto"
+                },
+                {
+                    "id": "difficulties/easy",
+                    "name": "Easy"
+                },
+                {
+                    "id": "difficulties/normal",
+                    "name": "Normal"
+                },
+                {
+                    "id": "difficulties/hard",
+                    "name": "Hard"
+                },
+                {
+                    "id": "difficulties/harder",
+                    "name": "Harder"
+                },
+                {
+                    "id": "difficulties/insane",
+                    "name": "Insane"
+                },
+                {
+                    "id": "difficulties/easy-demon",
+                    "name": "Easy Demon"
+                },
+                {
+                    "id": "difficulties/medium-demon",
+                    "name": "Medium Demon"
+                },
+                {
+                    "id": "difficulties/hard-demon",
+                    "name": "Hard Demon"
+                },
+                {
+                    "id": "difficulties/insane-demon",
+                    "name": "Insane Demon"
+                },
+                {
+                    "id": "difficulties/extreme-demon",
+                    "name": "Extreme Demon"
+                }
+            ]
+        },
+        {
+            "id": "garage",
+            "name": "Garage",
+            "icons": [
+                {
+                    "id": "garage/death-effect-1",
+                    "name": "Death effect 1"
+                },
+                {
+                    "id": "garage/death-effect-2",
+                    "name": "Death effect 2"
+                },
+                {
+                    "id": "garage/death-effect-3",
+                    "name": "Death effect 3"
+                },
+                {
+                    "id": "garage/death-effect-4",
+                    "name": "Death effect 4"
+                },
+                {
+                    "id": "garage/death-effect-5",
+                    "name": "Death effect 5"
+                },
+                {
+                    "id": "garage/death-effect-6",
+                    "name": "Death effect 6"
+                },
+                {
+                    "id": "garage/death-effect-7",
+                    "name": "Death effect 7"
+                },
+                {
+                    "id": "garage/death-effect-8",
+                    "name": "Death effect 8"
+                },
+                {
+                    "id": "garage/death-effect-9",
+                    "name": "Death effect 9"
+                },
+                {
+                    "id": "garage/death-effect-10",
+                    "name": "Death effect 10"
+                },
+                {
+                    "id": "garage/death-effect-11",
+                    "name": "Death effect 11"
+                },
+                {
+                    "id": "garage/death-effect-12",
+                    "name": "Death effect 12"
+                },
+                {
+                    "id": "garage/death-effect-13",
+                    "name": "Death effect 13"
+                },
+                {
+                    "id": "garage/death-effect-14",
+                    "name": "Death effect 14"
+                },
+                {
+                    "id": "garage/death-effect-15",
+                    "name": "Death effect 15"
+                },
+                {
+                    "id": "garage/death-effect-16",
+                    "name": "Death effect 16"
+                },
+                {
+                    "id": "garage/death-effect-17",
+                    "name": "Death effect 17"
+                },
+                {
+                    "id": "garage/death-effect-18",
+                    "name": "Death effect 18"
+                },
+                {
+                    "id": "garage/death-effect-19",
+                    "name": "Death effect 19"
+                },
+                {
+                    "id": "garage/death-effect-20",
+                    "name": "Death effect 20"
+                },
+                {
+                    "id": "garage/ship-fire-1",
+                    "name": "Ship fire 1"
+                },
+                {
+                    "id": "garage/ship-fire-2",
+                    "name": "Ship fire 2"
+                },
+                {
+                    "id": "garage/ship-fire-3",
+                    "name": "Ship fire 3"
+                },
+                {
+                    "id": "garage/ship-fire-4",
+                    "name": "Ship fire 4"
+                },
+                {
+                    "id": "garage/ship-fire-5",
+                    "name": "Ship fire 5"
+                },
+                {
+                    "id": "garage/ship-fire-6",
+                    "name": "Ship fire 6"
+                },
+                {
+                    "id": "garage/trail-1",
+                    "name": "Trail 1"
+                },
+                {
+                    "id": "garage/trail-2",
+                    "name": "Trail 2"
+                },
+                {
+                    "id": "garage/trail-3",
+                    "name": "Trail 3"
+                },
+                {
+                    "id": "garage/trail-4",
+                    "name": "Trail 4"
+                },
+                {
+                    "id": "garage/trail-5",
+                    "name": "Trail 5"
+                },
+                {
+                    "id": "garage/trail-6",
+                    "name": "Trail 6"
+                },
+                {
+                    "id": "garage/trail-7",
+                    "name": "Trail 7"
+                },
+                {
+                    "id": "garage/path-1",
+                    "name": "Path 1"
+                },
+                {
+                    "id": "garage/path-2",
+                    "name": "Path 2"
+                },
+                {
+                    "id": "garage/path-3",
+                    "name": "Path 3"
+                },
+                {
+                    "id": "garage/path-4",
+                    "name": "Path 4"
+                },
+                {
+                    "id": "garage/path-5",
+                    "name": "Path 5"
+                },
+                {
+                    "id": "garage/path-6",
+                    "name": "Path 6"
+                },
+                {
+                    "id": "garage/path-7",
+                    "name": "Path 7"
+                },
+                {
+                    "id": "garage/path-8",
+                    "name": "Path 8"
+                },
+                {
+                    "id": "garage/path-9",
+                    "name": "Path 9"
+                },
+                {
+                    "id": "garage/path-10",
+                    "name": "Path 10"
+                },
+                {
+                    "id": "garage/item-1",
+                    "name": "Item 1"
+                },
+                {
+                    "id": "garage/item-2",
+                    "name": "Item 2"
+                },
+                {
+                    "id": "garage/item-3",
+                    "name": "Item 3"
+                },
+                {
+                    "id": "garage/item-4",
+                    "name": "Item 4"
+                },
+                {
+                    "id": "garage/item-5",
+                    "name": "Item 5"
+                },
+                {
+                    "id": "garage/item-16",
+                    "name": "Item 16"
+                },
+                {
+                    "id": "garage/item-17",
+                    "name": "Item 17"
+                },
+                {
+                    "id": "garage/item-18",
+                    "name": "Item 18"
+                },
+                {
+                    "id": "garage/item-19",
+                    "name": "Item 19"
+                },
+                {
+                    "id": "garage/item-20",
+                    "name": "Item 20"
+                }
+            ]
+        },
+        {
+            "id": "decorations",
+            "name": "Decorations",
+            "icons": [
+                {
+                    "id": "decorations/skull",
+                    "name": "Skull"
+                },
+                {
+                    "id": "decorations/skull-1",
+                    "name": "Skull 1"
+                },
+                {
+                    "id": "decorations/skull-2",
+                    "name": "Skull 2"
+                },
+                {
+                    "id": "decorations/heart",
+                    "name": "Heart"
+                },
+                {
+                    "id": "decorations/potion",
+                    "name": "Potion"
+                },
+                {
+                    "id": "decorations/key",
+                    "name": "Key"
+                },
+                {
+                    "id": "decorations/keyhole",
+                    "name": "Keyhole"
+                },
+                {
+                    "id": "decorations/flower",
+                    "name": "Flower"
+                },
+                {
+                    "id": "decorations/question-mark",
+                    "name": "Question mark"
+                },
+                {
+                    "id": "decorations/exclamation-mark",
+                    "name": "Exclamation mark"
+                },
+                {
+                    "id": "decorations/cross",
+                    "name": "Cross"
+                },
+                {
+                    "id": "decorations/arrow-1",
+                    "name": "Arrow 1"
+                },
+                {
+                    "id": "decorations/arrow-2",
+                    "name": "Arrow 2"
+                },
+                {
+                    "id": "decorations/arrow-3",
+                    "name": "Arrow 3"
+                },
+                {
+                    "id": "decorations/gear-1",
+                    "name": "Gear 1"
+                },
+                {
+                    "id": "decorations/gear-2",
+                    "name": "Gear 2"
+                },
+                {
+                    "id": "decorations/gear-3",
+                    "name": "Gear 3"
+                },
+                {
+                    "id": "decorations/gear-4",
+                    "name": "Gear 4"
+                },
+                {
+                    "id": "decorations/wheel-1",
+                    "name": "Wheel 1"
+                },
+                {
+                    "id": "decorations/wheel-2",
+                    "name": "Wheel 2"
+                },
+                {
+                    "id": "decorations/wheel-3",
+                    "name": "Wheel 3"
+                },
+                {
+                    "id": "decorations/cartwheel-1",
+                    "name": "Cartwheel 1"
+                },
+                {
+                    "id": "decorations/cartwheel-2",
+                    "name": "Cartwheel 2"
+                },
+                {
+                    "id": "decorations/cartwheel-3",
+                    "name": "Cartwheel 3"
+                },
+                {
+                    "id": "decorations/spiral-1",
+                    "name": "Spiral 1"
+                },
+                {
+                    "id": "decorations/spiral-2",
+                    "name": "Spiral 2"
+                },
+                {
+                    "id": "decorations/spiral-3",
+                    "name": "Spiral 3"
+                },
+                {
+                    "id": "decorations/spiral-4",
+                    "name": "Spiral 4"
+                },
+                {
+                    "id": "decorations/swirl-1",
+                    "name": "Swirl 1"
+                },
+                {
+                    "id": "decorations/swirl-2",
+                    "name": "Swirl 2"
+                },
+                {
+                    "id": "decorations/swirl-3",
+                    "name": "Swirl 3"
+                },
+                {
+                    "id": "decorations/swirl-4",
+                    "name": "Swirl 4"
+                },
+                {
+                    "id": "decorations/ring-spiral",
+                    "name": "Ring spiral"
+                },
+                {
+                    "id": "decorations/geometric-1",
+                    "name": "Geometric 1"
+                },
+                {
+                    "id": "decorations/geometric-2",
+                    "name": "Geometric 2"
+                },
+                {
+                    "id": "decorations/geometric-3",
+                    "name": "Geometric 3"
+                },
+                {
+                    "id": "decorations/cloud-1",
+                    "name": "Cloud 1"
+                },
+                {
+                    "id": "decorations/cloud-2",
+                    "name": "Cloud 2"
+                },
+                {
+                    "id": "decorations/cloud-3",
+                    "name": "Cloud 3"
+                },
+                {
+                    "id": "decorations/round-cloud-1",
+                    "name": "Round cloud 1"
+                },
+                {
+                    "id": "decorations/round-cloud-2",
+                    "name": "Round cloud 2"
+                },
+                {
+                    "id": "decorations/round-cloud-3",
+                    "name": "Round cloud 3"
+                },
+                {
+                    "id": "decorations/art-cloud-1",
+                    "name": "Art cloud 1"
+                },
+                {
+                    "id": "decorations/art-cloud-2",
+                    "name": "Art cloud 2"
+                },
+                {
+                    "id": "decorations/art-cloud-3",
+                    "name": "Art cloud 3"
+                },
+                {
+                    "id": "decorations/rainbow-1",
+                    "name": "Rainbow 1"
+                },
+                {
+                    "id": "decorations/rainbow-2",
+                    "name": "Rainbow 2"
+                },
+                {
+                    "id": "decorations/circle",
+                    "name": "Circle"
+                },
+                {
+                    "id": "decorations/ring",
+                    "name": "Ring"
+                },
+                {
+                    "id": "decorations/heart-shape",
+                    "name": "Heart shape"
+                },
+                {
+                    "id": "decorations/diamond-shape",
+                    "name": "Diamond shape"
+                },
+                {
+                    "id": "decorations/star-shape",
+                    "name": "Star shape"
+                },
+                {
+                    "id": "decorations/note",
+                    "name": "Note"
+                },
+                {
+                    "id": "decorations/square",
+                    "name": "Square"
+                },
+                {
+                    "id": "decorations/triangle",
+                    "name": "Triangle"
+                },
+                {
+                    "id": "decorations/hexagon",
+                    "name": "Hexagon"
+                }
+            ]
+        }
+    ]
+}

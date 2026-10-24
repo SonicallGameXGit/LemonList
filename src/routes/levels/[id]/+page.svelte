@@ -1,8 +1,14 @@
 <script lang="ts">
     import { enhance } from '$app/forms'
     import { resolve } from '$app/paths'
-    import { gameDifficultyRef, levelDifficultyRef, naDifficultyRef, sprite } from '#lib/gd.ts'
-    import { ENGAGEMENT_MAX } from '#lib/list.ts'
+    import {
+        garageSprite,
+        gameDifficultyRef,
+        levelDifficultyRef,
+        naDifficultyRef,
+        sprite,
+    } from '#lib/gd.ts'
+    import { ENGAGEMENT_MAX, type Skillset } from '#lib/list.ts'
     import { formatDate, formatEngagement, formatPoints } from '#lib/format.ts'
     import Alert from '#lib/components/Alert.svelte'
     import Avatar from '#lib/components/Avatar.svelte'
@@ -10,6 +16,8 @@
     import GdButton from '#lib/components/GdButton.svelte'
     import GdList from '#lib/components/GdList.svelte'
     import ProgressBar from '#lib/components/ProgressBar.svelte'
+    import SkillsetScores from '#lib/components/SkillsetScores.svelte'
+    import SkillsetTag from '#lib/components/SkillsetTag.svelte'
     import Sprite from '#lib/components/Sprite.svelte'
     import type { PageProps } from './$types'
 
@@ -24,6 +32,24 @@
     // Starts from the stored rating of the viewer, clicking a score overrides it
     let selectedRating: number | null = $derived(data.viewerRating.rating)
     let rating = $state(false)
+
+    // Starts from the stored votes of the viewer, the checkboxes change it
+    let selectedSkillsets: number[] = $derived(data.viewerSkillsets.votes)
+    let voting = $state(false)
+    // The last skillset touched, its description shows under the checkboxes (works on phones too)
+    let hintedSkillset: Skillset | null = $state(null)
+
+    const skillsetsChanged = $derived(
+        selectedSkillsets.length !== data.viewerSkillsets.votes.length ||
+            selectedSkillsets.some((id) => !data.viewerSkillsets.votes.includes(id)),
+    )
+
+    function toggleSkillset(skillset: Skillset) {
+        selectedSkillsets = selectedSkillsets.includes(skillset.id)
+            ? selectedSkillsets.filter((id) => id !== skillset.id)
+            : [...selectedSkillsets, skillset.id]
+        hintedSkillset = skillset
+    }
 
     async function copyId() {
         await navigator.clipboard.writeText(String(level.gdId))
@@ -158,6 +184,7 @@
             >
                 {level.verifier.displayUsername}
             </a>
+            <SkillsetTag skillset={data.skillsetTags[level.verifier.username]} compact />
         {/if}
     </p>
     <p class="flex items-center gap-2">
@@ -191,7 +218,7 @@
 {/if}
 
 <div class="mt-16 grid gap-14 lg:grid-cols-[1fr_24rem]">
-    <section>
+    <section class="min-w-0">
         {#if level.position === null}
             <h2 class="mb-5 text-center gd-title text-4xl">Verification</h2>
             <div class="gd-dark flex flex-col gap-5 p-6 text-center">
@@ -226,9 +253,13 @@
                                     href={resolve('/players/[username]', {
                                         username: record.player.username,
                                     })}
-                                    class="block truncate gd-title text-2xl"
+                                    class="flex items-center gap-2 gd-title text-2xl"
                                 >
-                                    {record.player.displayUsername}
+                                    <span class="truncate">{record.player.displayUsername}</span>
+                                    <SkillsetTag
+                                        skillset={data.skillsetTags[record.player.username]}
+                                        compact
+                                    />
                                 </a>
                                 <p class="text-base text-black/55">
                                     {formatDate(record.submittedAt)}
@@ -258,91 +289,213 @@
         {/if}
     </section>
 
-    <section>
-        <h2 class="mb-5 text-center gd-title text-4xl">Engagement</h2>
-        <div class="gd-box flex flex-col gap-5 px-3 py-2">
-            {#if level.engagement === null}
-                <p class="text-center">Nobody has rated this level yet.</p>
-            {:else}
-                <div class="text-center">
-                    <span class="gd-gold text-6xl">{formatEngagement(level.engagement)}</span>
-                    <p>from {level.ratingsCount} players</p>
-                </div>
-                <div class="flex items-end gap-1.5" aria-label="Ratings distribution">
-                    {#each data.distribution as votes, index (index)}
-                        <div class="flex flex-1 flex-col items-center gap-1">
-                            <div class="flex h-20 w-full items-end">
-                                <div
-                                    class="w-full rounded-t border-2 border-b-0 border-black bg-gd-yellow"
-                                    style:height="{Math.max(6, (votes / maxVotes) * 100)}%"
-                                    title="{votes} players rated it {index + 1}"
-                                ></div>
-                            </div>
-                            <span class="gd-title text-sm">{index + 1}</span>
-                        </div>
-                    {/each}
-                </div>
-            {/if}
-
-            <div class="border-t-2 border-black/20 pt-5">
-                {#if level.position === null}
-                    <p class="text-center">Ratings open after the level is placed.</p>
-                {:else if data.viewerRating.canRate}
-                    <form
-                        method="POST"
-                        action="?/rate"
-                        class="flex flex-col items-center gap-4"
-                        use:enhance={() => {
-                            rating = true
-
-                            return async ({ update }) => {
-                                await update({ reset: false })
-                                rating = false
-                            }
-                        }}
-                    >
-                        <p class="gd-title text-xl">
-                            {data.viewerRating.rating === null ? 'Rate engagement' : 'Your rating'}
-                        </p>
-                        <input type="hidden" name="score" value={selectedRating ?? ''} />
-                        <div class="grid grid-cols-5 gap-2">
-                            {#each { length: ENGAGEMENT_MAX }, index (index)}
-                                <GdButton
-                                    size="sm"
-                                    white
-                                    color={selectedRating === index + 1 ? 'green' : 'gray'}
-                                    pressed={selectedRating === index + 1}
-                                    class="w-14 px-0"
-                                    onclick={() => (selectedRating = index + 1)}
-                                >
-                                    {index + 1}
-                                </GdButton>
-                            {/each}
-                        </div>
-                        {#if form?.action === 'rate' && form.error !== null}
-                            <Alert kind="error">{form.error}</Alert>
-                        {/if}
-                        {#if form?.action === 'rate' && form.success !== null}
-                            <Alert kind="success">{form.success}</Alert>
-                        {/if}
-                        <GdButton
-                            type="submit"
-                            disabled={selectedRating === null ||
-                                selectedRating === data.viewerRating.rating ||
-                                rating}
-                        >
-                            {data.viewerRating.rating === null ? 'Submit' : 'Change'}
-                        </GdButton>
-                    </form>
+    <!-- min-w-0: the skillset checkboxes would stretch the column past the screen on phones -->
+    <div class="flex min-w-0 flex-col gap-14">
+        <section>
+            <h2 class="mb-5 text-center gd-title text-4xl">Engagement</h2>
+            <div class="gd-box flex flex-col gap-5 px-3 py-2">
+                {#if level.engagement === null}
+                    <p class="text-center">Nobody has rated this level yet.</p>
                 {:else}
-                    <p class="text-center">
-                        Only players who beat this level can rate it.
-                        {#if data.user === null}
-                            <a href={resolve('/(guest)/login')} class="gd-link">Log in</a>
-                        {/if}
-                    </p>
+                    <div class="text-center">
+                        <span class="gd-gold text-6xl">{formatEngagement(level.engagement)}</span>
+                        <p>from {level.ratingsCount} players</p>
+                    </div>
+                    <div class="flex items-end gap-1.5" aria-label="Ratings distribution">
+                        {#each data.distribution as votes, index (index)}
+                            <div class="flex flex-1 flex-col items-center gap-1">
+                                <div class="flex h-20 w-full items-end">
+                                    <div
+                                        class="w-full rounded-t border-2 border-b-0 border-black bg-gd-yellow"
+                                        style:height="{Math.max(6, (votes / maxVotes) * 100)}%"
+                                        title="{votes} players rated it {index + 1}"
+                                    ></div>
+                                </div>
+                                <span class="gd-title text-sm">{index + 1}</span>
+                            </div>
+                        {/each}
+                    </div>
                 {/if}
+
+                <div class="border-t-2 border-black/20 pt-5">
+                    {#if level.position === null}
+                        <p class="text-center">Ratings open after the level is placed.</p>
+                    {:else if data.viewerRating.canRate}
+                        <form
+                            method="POST"
+                            action="?/rate"
+                            class="flex flex-col items-center gap-4"
+                            use:enhance={() => {
+                                rating = true
+
+                                return async ({ update }) => {
+                                    await update({ reset: false })
+                                    rating = false
+                                }
+                            }}
+                        >
+                            <p class="gd-title text-xl">
+                                {data.viewerRating.rating === null
+                                    ? 'Rate engagement'
+                                    : 'Your rating'}
+                            </p>
+                            <input type="hidden" name="score" value={selectedRating ?? ''} />
+                            <div class="grid grid-cols-5 gap-2">
+                                {#each { length: ENGAGEMENT_MAX }, index (index)}
+                                    <GdButton
+                                        size="sm"
+                                        white
+                                        color={selectedRating === index + 1 ? 'green' : 'gray'}
+                                        pressed={selectedRating === index + 1}
+                                        class="w-14 px-0"
+                                        onclick={() => (selectedRating = index + 1)}
+                                    >
+                                        {index + 1}
+                                    </GdButton>
+                                {/each}
+                            </div>
+                            {#if form?.action === 'rate' && form.error !== null}
+                                <Alert kind="error">{form.error}</Alert>
+                            {/if}
+                            {#if form?.action === 'rate' && form.success !== null}
+                                <Alert kind="success">{form.success}</Alert>
+                            {/if}
+                            <GdButton
+                                type="submit"
+                                disabled={selectedRating === null ||
+                                    selectedRating === data.viewerRating.rating ||
+                                    rating}
+                            >
+                                {data.viewerRating.rating === null ? 'Submit' : 'Change'}
+                            </GdButton>
+                        </form>
+                    {:else}
+                        <p class="text-center">
+                            Only players who beat this level can rate it.
+                            {#if data.user === null}
+                                <a href={resolve('/(guest)/login')} class="gd-link">Log in</a>
+                            {/if}
+                        </p>
+                    {/if}
+                </div>
             </div>
-        </div>
-    </section>
+        </section>
+
+        <!-- Only levels of the Main List have skillsets -->
+        {#if level.position !== null && data.allSkillsets.length > 0}
+            <section>
+                <h2 class="mb-5 text-center gd-title text-4xl">Skillsets</h2>
+                <div class="gd-box flex flex-col gap-5 px-3 py-2">
+                    {#if data.skillsets.scores.length === 0}
+                        <p class="text-center">Nobody has voted for its skillsets yet.</p>
+                    {:else}
+                        <SkillsetScores scores={data.skillsets.scores} />
+                        <p class="text-center">
+                            {data.skillsets.voters === 1
+                                ? 'from 1 player'
+                                : `from ${data.skillsets.voters} players`}
+                        </p>
+                    {/if}
+
+                    <div class="border-t-2 border-black/20 pt-5">
+                        {#if data.viewerSkillsets.canVote}
+                            <form
+                                method="POST"
+                                action="?/skillsets"
+                                class="flex flex-col items-center gap-4"
+                                use:enhance={() => {
+                                    voting = true
+
+                                    return async ({ update }) => {
+                                        await update({ reset: false })
+                                        voting = false
+                                    }
+                                }}
+                            >
+                                <p class="gd-title text-xl">
+                                    {data.viewerSkillsets.votes.length === 0
+                                        ? 'Vote for skillsets'
+                                        : 'Your skillsets'}
+                                </p>
+                                <div
+                                    class="grid w-full grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-2"
+                                    role="group"
+                                    aria-label="Skillsets this level tests"
+                                >
+                                    {#each data.allSkillsets as skillset (skillset.id)}
+                                        {@const checked = selectedSkillsets.includes(skillset.id)}
+                                        <label
+                                            class={[
+                                                'relative flex gd-press cursor-pointer flex-col items-center gap-1 rounded-xl px-1 pt-2.5 pb-2 text-center has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-white',
+                                                checked
+                                                    ? 'bg-black/40 ring-2 ring-gd-lime'
+                                                    : 'bg-black/15 hover:bg-black/25',
+                                            ]}
+                                            title={skillset.description ?? undefined}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                name="skillset"
+                                                value={skillset.id}
+                                                class="sr-only"
+                                                {checked}
+                                                onchange={() => toggleSkillset(skillset)}
+                                            />
+                                            <img
+                                                src={skillset.iconUrl}
+                                                alt=""
+                                                class="size-10 object-contain"
+                                            />
+                                            <span
+                                                class="gd-title text-sm leading-tight break-words"
+                                            >
+                                                {skillset.name}
+                                            </span>
+                                            <img
+                                                src={garageSprite(
+                                                    checked ? 'check-on' : 'check-off',
+                                                )}
+                                                alt=""
+                                                class="absolute top-1 right-1 size-5 object-contain"
+                                            />
+                                        </label>
+                                    {/each}
+                                </div>
+                                <p class="min-h-12 text-center text-base">
+                                    {#if hintedSkillset !== null && hintedSkillset.description !== null}
+                                        <span class="gd-title">{hintedSkillset.name}:</span>
+                                        {hintedSkillset.description}
+                                    {:else}
+                                        Check every skillset this level tests, then send your vote.
+                                    {/if}
+                                </p>
+                                {#if form?.action === 'skillsets' && form.error !== null}
+                                    <Alert kind="error">{form.error}</Alert>
+                                {/if}
+                                {#if form?.action === 'skillsets' && form.success !== null}
+                                    <Alert kind="success">{form.success}</Alert>
+                                {/if}
+                                <GdButton type="submit" disabled={!skillsetsChanged || voting}>
+                                    {#if data.viewerSkillsets.votes.length === 0}
+                                        Submit
+                                    {:else if selectedSkillsets.length === 0}
+                                        Remove vote
+                                    {:else}
+                                        Change
+                                    {/if}
+                                </GdButton>
+                            </form>
+                        {:else}
+                            <p class="text-center">
+                                Only players who beat this level can vote for its skillsets.
+                                {#if data.user === null}
+                                    <a href={resolve('/(guest)/login')} class="gd-link">Log in</a>
+                                {/if}
+                            </p>
+                        {/if}
+                    </div>
+                </div>
+            </section>
+        {/if}
+    </div>
 </div>

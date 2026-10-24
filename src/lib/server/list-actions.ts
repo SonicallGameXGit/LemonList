@@ -1,6 +1,20 @@
 // Changes of the demon list made by players (records, ratings, avatars) and admins (levels, reviews,
 // verification). Throws ActionError with a message that is safe to show
-import { and, asc, count, eq, gt, gte, isNotNull, isNull, lt, lte, ne, sql } from 'drizzle-orm'
+import {
+    and,
+    asc,
+    count,
+    eq,
+    gt,
+    gte,
+    inArray,
+    isNotNull,
+    isNull,
+    lt,
+    lte,
+    ne,
+    sql,
+} from 'drizzle-orm'
 import { db } from '#lib/server/db/index.ts'
 import {
     difficulty,
@@ -9,6 +23,8 @@ import {
     listChange,
     rating,
     record,
+    skillset,
+    skillsetVote,
     user,
 } from '#lib/server/db/schema.ts'
 import { MediaKind, deleteMedia, saveImage } from '#lib/server/media.ts'
@@ -121,6 +137,49 @@ export function rateLevel(playerId: string, levelId: number, score: number) {
             set: { score, createdAt: new Date() },
         })
         .run()
+}
+
+// Replaces the skillsets the player chose for the level, none takes their vote back
+export function voteSkillsets(playerId: string, levelId: number, skillsetIds: number[]) {
+    const target = findLevel(levelId)
+
+    if (target.position === null || !hasCompleted(target.id, playerId)) {
+        throw new ActionError('Only players who beat this level can vote for its skillsets')
+    }
+
+    const chosen = [...new Set(skillsetIds)]
+    const existing =
+        chosen.length === 0
+            ? []
+            : db
+                  .select({ id: skillset.id })
+                  .from(skillset)
+                  .where(inArray(skillset.id, chosen))
+                  .all()
+
+    if (existing.length !== chosen.length) {
+        throw new ActionError('Some of these skillsets were deleted, reload the page')
+    }
+
+    db.transaction((tx) => {
+        tx.delete(skillsetVote)
+            .where(and(eq(skillsetVote.levelId, target.id), eq(skillsetVote.playerId, playerId)))
+            .run()
+
+        if (chosen.length > 0) {
+            tx.insert(skillsetVote)
+                .values(chosen.map((skillsetId) => ({ levelId: target.id, playerId, skillsetId })))
+                .run()
+        }
+    })
+}
+
+export function setSkillsetSettings(
+    userId: string,
+    showSkillsetTag: boolean,
+    showSkillsets: boolean,
+) {
+    db.update(user).set({ showSkillsetTag, showSkillsets }).where(eq(user.id, userId)).run()
 }
 
 // The icon kit is kept when the avatar changes, so the garage remembers it
@@ -862,4 +921,110 @@ export async function deleteDifficulty(difficultyId: number) {
     })
 
     await deleteMedia(current.face)
+}
+
+// Skillsets
+
+function findSkillset(id: number) {
+    const row = db
+        .select({ id: skillset.id, icon: skillset.icon, position: skillset.position })
+        .from(skillset)
+        .where(eq(skillset.id, id))
+        .get()
+
+    if (row === undefined) {
+        throw new ActionError("This skillset doesn't exist anymore")
+    }
+
+    return row
+}
+
+function skillsetsCount(tx: Transaction) {
+    return tx.select({ count: count() }).from(skillset).get()?.count ?? 0
+}
+
+// Names are unique no matter the case, like the ones of the difficulties
+function checkSkillsetName(name: string, skillsetId: number | null) {
+    const same = db
+        .select({ name: skillset.name })
+        .from(skillset)
+        .where(
+            and(
+                sql`lower(${skillset.name}) = lower(${name})`,
+                skillsetId === null ? undefined : ne(skillset.id, skillsetId),
+            ),
+        )
+        .get()
+
+    if (same !== undefined) {
+        throw new ActionError("There's already a skillset called " + same.name)
+    }
+}
+
+export type SkillsetInput = {
+    name: string
+    description: string | null
+}
+
+// Skillsets are equal, the position only keeps them in the order they were added
+export async function createSkillset(input: SkillsetInput, icon: Uint8Array) {
+    checkSkillsetName(input.name, null)
+
+    const key = await saveImage(MediaKind.SkillsetIcon, icon)
+
+    try {
+        db.transaction((tx) => {
+            tx.insert(skillset)
+                .values({ ...input, icon: key, position: skillsetsCount(tx) + 1 })
+                .run()
+        })
+    } catch (error) {
+        await deleteMedia(key)
+        throw error
+    }
+}
+
+// Null icon keeps the current one
+export async function updateSkillset(
+    skillsetId: number,
+    input: SkillsetInput,
+    icon: Uint8Array | null,
+) {
+    const current = findSkillset(skillsetId)
+
+    checkSkillsetName(input.name, skillsetId)
+
+    const key = icon === null ? null : await saveImage(MediaKind.SkillsetIcon, icon)
+
+    try {
+        db.update(skillset)
+            .set(key === null ? input : { ...input, icon: key })
+            .where(eq(skillset.id, skillsetId))
+            .run()
+    } catch (error) {
+        if (key !== null) {
+            await deleteMedia(key)
+        }
+
+        throw error
+    }
+
+    if (key !== null) {
+        await deleteMedia(current.icon)
+    }
+}
+
+// Its votes go with it
+export async function deleteSkillset(skillsetId: number) {
+    const current = findSkillset(skillsetId)
+
+    db.transaction((tx) => {
+        tx.delete(skillset).where(eq(skillset.id, skillsetId)).run()
+        tx.update(skillset)
+            .set({ position: sql`${skillset.position} - 1` })
+            .where(gt(skillset.position, current.position))
+            .run()
+    })
+
+    await deleteMedia(current.icon)
 }

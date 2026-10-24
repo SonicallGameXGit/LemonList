@@ -17,3 +17,7 @@ export function formatPoints(points: number) {
 export function formatEngagement(engagement: number) {
     return engagement.toFixed(1)
 }
+
+export function formatSkillsetScore(score: number) {
+    return score.toFixed(1)
+}
